@@ -58,4 +58,21 @@ describe('searchParcels', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('oops', { status: 500 })));
     await expect(searchParcels('123 MAIN ST')).rejects.toThrow('upstream');
   });
+  it('throws Error(upstream) on network failure (rejected fetch)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('fetch failed')));
+    await expect(searchParcels('123 MAIN ST')).rejects.toThrow('upstream');
+  });
+  it('sanitizes the term before building the query URL', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ features: [] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await searchParcels(`123' OR 1=1;-- main st`);
+    const calledUrl = new URL(String(fetchMock.mock.calls[0][0]));
+    const where = calledUrl.searchParams.get('where')!;
+    // The only single quotes allowed are the four that delimit the two LIKE
+    // patterns; none of the caller's quotes may survive into the clause.
+    expect(where).toContain("LIKE '%123 OR 11-- MAIN ST%'");
+    expect(where.match(/'/g)).toHaveLength(4);
+  });
 });

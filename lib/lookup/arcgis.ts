@@ -83,7 +83,19 @@ export function parseResponse(json: unknown): ParcelCandidate[] {
 }
 
 export async function searchParcels(term: string): Promise<ParcelCandidate[]> {
-  const res = await fetch(buildQueryUrl(term), { signal: AbortSignal.timeout(8000) });
-  if (!res.ok) throw new Error('upstream');
-  return parseResponse(await res.json());
+  // Defense-in-depth: sanitize here regardless of whether the caller already
+  // did (sanitization is idempotent), so no raw input ever reaches the where
+  // clause built by buildQueryUrl.
+  const safe = sanitizeSearchTerm(term);
+  let json: unknown;
+  try {
+    const res = await fetch(buildQueryUrl(safe), { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) throw new Error('upstream');
+    json = await res.json();
+  } catch {
+    // Non-200, network failure (DNS, connection refused), timeout abort, and
+    // body/JSON read failures are all collapsed into the documented contract.
+    throw new Error('upstream');
+  }
+  return parseResponse(json);
 }
