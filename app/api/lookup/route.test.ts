@@ -5,18 +5,30 @@ vi.mock('@/lib/lookup/arcgis', async (importOriginal) => {
   return { ...mod, searchParcels: vi.fn() };
 });
 
-import { GET } from './route';
+import { POST } from './route';
 import { searchParcels } from '@/lib/lookup/arcgis';
 
 const mockSearch = vi.mocked(searchParcels);
 
-function req(q: string) {
-  return new Request(`http://localhost/api/lookup?q=${encodeURIComponent(q)}`);
+function req(body: unknown) {
+  return new Request('http://localhost/api/lookup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+function rawReq(body: string) {
+  return new Request('http://localhost/api/lookup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+  });
 }
 
 beforeEach(() => mockSearch.mockReset());
 
-describe('GET /api/lookup', () => {
+describe('POST /api/lookup', () => {
   it('returns candidates for a valid query', async () => {
     mockSearch.mockResolvedValue([
       {
@@ -25,7 +37,7 @@ describe('GET /api/lookup', () => {
         taxDistrictName: 'Noblesville City', propertyReportUrl: 'https://example.test/r',
       },
     ]);
-    const res = await GET(req('1234 conner st'));
+    const res = await POST(req({ q: '1234 conner st' }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.candidates).toHaveLength(1);
@@ -33,7 +45,7 @@ describe('GET /api/lookup', () => {
   });
 
   it('rejects queries shorter than 4 characters', async () => {
-    const res = await GET(req('12'));
+    const res = await POST(req({ q: '12' }));
     expect(res.status).toBe(400);
     expect(mockSearch).not.toHaveBeenCalled();
   });
@@ -41,9 +53,17 @@ describe('GET /api/lookup', () => {
   it('maps upstream failure to 502', async () => {
     const err = new Error('upstream');
     mockSearch.mockRejectedValueOnce(err);
-    const res = await GET(req('1234 conner st'));
+    const res = await POST(req({ q: '1234 conner st' }));
     expect(res.status).toBe(502);
     const body = await res.json();
     expect(body.error).toBe('upstream');
+  });
+
+  it('treats a malformed or missing body as too-short', async () => {
+    const res = await POST(rawReq('not json'));
+    expect(res.status).toBe(400);
+    expect(mockSearch).not.toHaveBeenCalled();
+    const body = await res.json();
+    expect(body.error).toBe('query-too-short');
   });
 });
