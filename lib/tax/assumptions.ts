@@ -61,6 +61,12 @@ export const REFERENDUM = {
   } as Sourced<number>,
 };
 
+/** Final levy year for the 2010 referendum debt rate (REFERENDUM.debt). */
+export const REFERENDUM_DEBT_END_YEAR: Sourced<number> = {
+  value: 2032, source: SOURCES.districtReferendumPage, status: 'confirmed',
+  note: 'Final levy year for the 2010 referendum debt.',
+};
+
 export const CURRENT_REFERENDUM_TOTAL: Sourced<number> = {
   value: REFERENDUM.currentOperating.value + REFERENDUM.debt.value, // 0.45
   source: SOURCES.countyRateSheet2026, status: 'confirmed',

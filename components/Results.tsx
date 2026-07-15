@@ -4,6 +4,7 @@ import {
   CIRCUIT_BREAKER_RATE,
   HOMESTEAD_CREDIT,
   REFERENDUM,
+  REFERENDUM_DEBT_END_YEAR,
   SCENARIOS,
   SOURCES,
 } from '@/lib/tax/assumptions';
@@ -29,7 +30,7 @@ function MathRows({ b }: { b: BillBreakdown }) {
     [`− Supplemental homestead credit (${HOMESTEAD_CREDIT.value.rate * 100}%, max $${HOMESTEAD_CREDIT.value.max})`, fmtCents(b.supplementalHomesteadCredit)],
     ['= Non-referendum tax after credits', fmtCents(b.nonReferendumNet)],
     ['+ School referendum operating tax', fmtCents(b.referendumOperatingTax)],
-    [`+ School referendum debt tax ($${REFERENDUM.debt.value.toFixed(2)}, through 2032)`, fmtCents(b.referendumDebtTax)],
+    [`+ School referendum debt tax ($${REFERENDUM.debt.value.toFixed(2)}, through ${REFERENDUM_DEBT_END_YEAR.value})`, fmtCents(b.referendumDebtTax)],
     ['Total estimated bill', fmtCents(b.total)],
   ];
   return (
