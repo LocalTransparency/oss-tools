@@ -48,6 +48,24 @@ describe('<Calculator>', () => {
     expect(await screen.findByText('$4,015')).toBeInTheDocument();
   });
 
+  it('clears the out-of-district message when manual entry fails validation', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ candidates: [{ ...candidate, taxDistrictName: 'Wayne Township' }] }), { status: 200 }),
+    ));
+    const user = userEvent.setup();
+    render(<Calculator />);
+    await user.type(screen.getByLabelText(/address/i), '1234 conner st');
+    await user.click(screen.getByRole('button', { name: /look up/i }));
+    await user.click(await screen.findByRole('button', { name: /1234 CONNER ST/i }));
+    expect(await screen.findByText(/covers homes in the Noblesville Schools district/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /enter assessed value manually/i }));
+    await user.type(screen.getByLabelText(/gross assessed value/i), '0');
+    await user.click(screen.getByRole('button', { name: /calculate/i }));
+    expect(await screen.findByText(/between \$1 and \$50,000,000/i)).toBeInTheDocument();
+    expect(screen.queryByText(/covers homes in the Noblesville Schools district/i)).not.toBeInTheDocument();
+  });
+
   it('shows out-of-district message for unmatched districts', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ candidates: [{ ...candidate, taxDistrictName: 'Wayne Township' }] }), { status: 200 }),

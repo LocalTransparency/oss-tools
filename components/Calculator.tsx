@@ -53,6 +53,7 @@ export default function Calculator() {
     const district = DISTRICTS.find((d) => d.name === manualDistrict);
     if (!Number.isFinite(grossAV) || grossAV <= 0 || grossAV > 50_000_000 || !district) {
       setError('Enter a gross assessed value between $1 and $50,000,000.');
+      setOutOfDistrict(false); setSelection(null);
       return;
     }
     setError(null); setOutOfDistrict(false);
@@ -127,7 +128,7 @@ export default function Calculator() {
       )}
 
       {outOfDistrict && (
-        <p className="rounded border p-3 text-sm">
+        <p role="alert" className="rounded border p-3 text-sm">
           This tool covers homes in the Noblesville Schools district (its five Hamilton County taxing
           districts). That parcel&rsquo;s taxing district isn&rsquo;t one of them, so its school rates differ
           and these numbers wouldn&rsquo;t apply.
