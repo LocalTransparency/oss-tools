@@ -31,6 +31,12 @@ export default function Calculator() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ q: query }),
       });
+      if (res.status === 400) {
+        setError(
+          'That address looks too short — try the street number and street name (e.g. 1234 Conner St).',
+        );
+        return;
+      }
       if (!res.ok) throw new Error('lookup-failed');
       const body = (await res.json()) as { candidates: ParcelCandidate[] };
       setCandidates(body.candidates);

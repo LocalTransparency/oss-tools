@@ -38,6 +38,18 @@ describe('<Calculator>', () => {
     expect(await screen.findByText(/county lookup isn.t available/i)).toBeInTheDocument();
   });
 
+  it('shows a too-short message (not the county-unavailable message) on a 400 response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: 'query-too-short' }), { status: 400 }),
+    ));
+    const user = userEvent.setup();
+    render(<Calculator />);
+    await user.type(screen.getByLabelText(/address/i), '1234 conner st');
+    await user.click(screen.getByRole('button', { name: /look up/i }));
+    expect(await screen.findByText(/address looks too short/i)).toBeInTheDocument();
+    expect(screen.queryByText(/county lookup isn.t available/i)).not.toBeInTheDocument();
+  });
+
   it('manual entry computes results without any lookup', async () => {
     const user = userEvent.setup();
     render(<Calculator />);
