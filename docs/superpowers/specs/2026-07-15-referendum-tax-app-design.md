@@ -15,6 +15,7 @@ Noblesville Schools has an operating referendum on the November 3, 2026 ballot. 
 All figures verified against DLGF, Hamilton County, and Noblesville Schools official sources (full citations in `lib/tax/assumptions.ts`):
 
 - **On the ballot (Nov 3, 2026):** Operating referendum, max rate **$0.57 per $100 net AV**, max levy $43,842,578/yr, up to 8 years. Replaces the 2018 operating referendum. Source: DLGF Final Determination No. 26-015-REF.
+- **District commitment:** the district has publicly committed to set a rate **no higher than $0.41 for 2027** (lower if assessed values come in above projections), and states it "will not use the maximum 57 cent rate for all eight years" — though later years may exceed $0.41. The 2027 commitment is public but not legally binding; the tool presents both the $0.41 committed rate and the $0.57 authorized max, clearly labeled (status: `public commitment` in assumptions, source: noblesvilleschools.org/referendum).
 - **Expiring:** 2018 operating referendum, **$0.37**, last levy pay-2026.
 - **Continuing either way:** 2010 referendum debt rate, **$0.08**, through 2032. "Fail" ≠ zero referendum tax.
 - **Pay-2026 certified rates** (DLGF 2026 Hamilton County Budget Order): Noblesville City district 11 total **$2.5549** ($0.45 referendum); Noblesville Township $1.8444; Noblesville–Delaware/HSE $2.4813; Noblesville–Wayne $2.4737; Noblesville–Fall Creek $2.4503.
@@ -66,14 +67,14 @@ Proxies address search to Hamilton County's public ArcGIS parcel endpoint (`serv
 |---|---|---|---|
 | Standard homestead deduction | $48,000 | $40,000 | $40,000 |
 | Supplemental deduction | 40% | 46% | 46% |
-| School referendum rates | $0.37 op + $0.08 debt | **$0.57 op** + $0.08 debt | $0.08 debt only |
+| School referendum rates | $0.37 op + $0.08 debt | **$0.41 op** (committed for 2027) / $0.57 op (authorized max) + $0.08 debt | $0.08 debt only |
 | Non-referendum district rates | Certified 2026 | Held at 2026 levels *(estimated)* | Held at 2026 levels *(estimated)* |
 | Supplemental homestead credit | min(10%, $300), non-referendum base | same | same |
 | Circuit breaker | 1% × gross AV, referendum outside | same | same |
 
 Disclosed caveats (rendered in the UI, not buried):
 1. Pay-2027 non-referendum rates aren't certified until January 2027; holding them at pay-2026 levels is an assumption and is flagged as such.
-2. $0.57 is a **maximum**; the certified rate could be lower under the $43.8M levy cap.
+2. The "passes" column is computed at **$0.41**, the rate the district has publicly committed not to exceed **for 2027** — with a secondary line in the same column showing the bill at the full **$0.57** ballot authorization ("legal maximum if fully levied"). The commitment is not legally binding and applies to 2027 only (later years may be higher, up to $0.57), which is why both are always shown. This also explains the messaging gap voters see: the ballot's statutorily-required "$955/year for a median $350,000 home" is computed at the $0.57 max, while the district's "$2.30/month average increase" framing assumes rates below the max across the eight years.
 3. Gross AV from the county's current layer is the 2026 assessment (pay-2027 basis). The "current" column applies pay-2026 parameters to that same AV, so it may differ slightly from the owner's actual 2026 bill (which used the 2025 assessment). Labeled as an estimate.
 4. Results are estimates, not bills; link to the county's official property report for the parcel.
 
@@ -83,7 +84,7 @@ Disclosed caveats (rendered in the UI, not buried):
 2. Multiple matches → candidate picker (address + parcel number).
 3. Results: three-column table (Current / If it passes / If it fails), annual and monthly totals, pass-vs-fail difference prominent, current-vs-future deltas for both outcomes.
 4. Collapsible "How this was calculated": full `BillBreakdown` walk-through with each parameter's value, source link, and confirmed/estimated badge.
-5. Methodology/FAQ page: SEA 1 summary, why "fail" still includes $0.08, why the district says it needs 57¢ vs 37¢ (net-AV shrinkage), all sources.
+5. Methodology/FAQ page: SEA 1 summary, why "fail" still includes $0.08, why the district says it needs more than 37¢ (net-AV shrinkage), why the ballot says "$955/year" while the district says "$2.30/month average" ($0.57 statutory-max math vs. the district's below-max rate plan starting at $0.41 in 2027), all sources.
 6. Footer: not affiliated with the district or any campaign; no data stored.
 
 ## Error handling
@@ -96,7 +97,8 @@ Disclosed caveats (rendered in the UI, not buried):
 ## Testing
 
 - **Engine unit tests (credibility backbone):**
-  - Reproduces the official ballot figure: median $350k home, pass scenario referendum increase ≈ $954.18/yr.
+  - Reproduces the official ballot figure: median $350k home at the $0.57 authorized max ≈ $954.18/yr referendum tax.
+  - Committed-rate variant: same home at $0.41 ≈ $686.34/yr, and the pass column renders both values.
   - Reproduces the pay-2026 worked example: $350k Noblesville City homestead ≈ $4,015 total.
   - Cap boundaries: high-AV home where the 1% cap binds; low-AV home where the 75% supplemental ceiling binds; credit capped at $300; referendum tax correctly excluded from cap and credit.
   - All five taxing districts produce distinct, correct totals.
