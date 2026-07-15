@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Noblesville Referendum Tax Estimator
 
-## Getting Started
+Neutral, sourced estimates of a Noblesville homeowner's property tax bill if the
+November 2026 Noblesville Schools operating referendum passes or fails, under
+Indiana's SEA 1 (2025) rules. Assessed values come from Hamilton County's public
+parcel data at lookup time; nothing a visitor enters is stored or logged.
 
-First, run the development server:
+- Spec: `docs/superpowers/specs/2026-07-15-referendum-tax-app-design.md`
+- All tax rates/parameters with sources: `lib/tax/assumptions.ts`
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Develop
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+    npm install
+    npm run dev        # http://localhost:3000
+    npm run test       # Vitest unit tests (engine math is anchored to official figures)
+    npm run e2e        # Playwright smoke test (county API mocked)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Deploy (AWS Amplify Hosting)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+One-time, in the AWS console for the hosting account:
 
-## Learn More
+1. Push this repo to GitHub (or CodeCommit).
+2. Amplify → Create new app → Host web app → connect the repo/branch.
+   Amplify auto-detects Next.js and uses `amplify.yml` (which runs unit tests before build).
+3. Domain: create a Route53 hosted zone for your domain (the registrar can be
+   external — e.g. Gandi — just point the domain's nameservers at the zone's
+   NS records). Then Amplify → Domain management → Add domain → enter the
+   subdomain you want (e.g. `noblesville.example.com`); Amplify provisions the
+   ACM certificate and DNS records in the zone automatically.
 
-To learn more about Next.js, take a look at the following resources:
+Every push to the connected branch redeploys. Unit tests failing fails the build.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Updating numbers
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+When 2027 rates certify (January 2027) or the district updates its commitments,
+edit `lib/tax/assumptions.ts` only — every figure carries its source URL and a
+`confirmed | estimated | public-commitment` status that the UI displays.
