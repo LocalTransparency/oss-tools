@@ -26,7 +26,9 @@ export default function Calculator() {
     e.preventDefault();
     setBusy(true); setError(null); setCandidates(null); setSelection(null); setOutOfDistrict(false);
     try {
-      const res = await fetch(`/api/lookup?q=${encodeURIComponent(query)}`);
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/lookup?q=${encodeURIComponent(query)}`,
+      );
       if (!res.ok) throw new Error('lookup-failed');
       const body = (await res.json()) as { candidates: ParcelCandidate[] };
       setCandidates(body.candidates);

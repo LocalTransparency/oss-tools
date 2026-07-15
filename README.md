@@ -11,7 +11,7 @@ parcel data at lookup time; nothing a visitor enters is stored or logged.
 ## Develop
 
     npm install
-    npm run dev        # http://localhost:3000
+    npm run dev        # http://localhost:3000/tools/2026-school-referendum
     npm run test       # Vitest unit tests (engine math is anchored to official figures)
     npm run e2e        # Playwright smoke test (county API mocked)
 
@@ -29,6 +29,10 @@ One-time, in the AWS console for the hosting account:
    ACM certificate and DNS records in the zone automatically.
 
 Every push to the connected branch redeploys. Unit tests failing fails the build.
+
+The app is built with a `basePath` of `/tools/2026-school-referendum` (see
+`next.config.ts`), so it can be surfaced at that path on the parent site;
+visiting the bare domain root returns 404 by design.
 
 ## Updating numbers
 

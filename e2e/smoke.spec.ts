@@ -10,7 +10,7 @@ test('address → results → math section', async ({ page }) => {
   await page.route('**/api/lookup**', (route) =>
     route.fulfill({ json: { candidates: [candidate] } }),
   );
-  await page.goto('/');
+  await page.goto('/tools/2026-school-referendum');
   await page.getByLabel(/address/i).fill('1234 conner st');
   await page.getByRole('button', { name: /look up/i }).click();
   await page.getByRole('button', { name: /1234 CONNER ST/i }).click();
