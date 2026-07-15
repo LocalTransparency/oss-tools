@@ -66,4 +66,12 @@ describe('POST /api/lookup', () => {
     const body = await res.json();
     expect(body.error).toBe('query-too-short');
   });
+
+  it('treats a JSON null body as too-short (not a 500)', async () => {
+    const res = await POST(rawReq('null'));
+    expect(res.status).toBe(400);
+    expect(mockSearch).not.toHaveBeenCalled();
+    const body = await res.json();
+    expect(body.error).toBe('query-too-short');
+  });
 });

@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 // bodies are not access-logged, which is what lets us promise that no
 // addresses or lookups are stored.
 export async function POST(request: Request) {
-  const { q } = await request.json().catch(() => ({ q: '' }));
+  const { q } = (await request.json().catch(() => null)) ?? {};
   const raw = typeof q === 'string' ? q : '';
   const term = sanitizeSearchTerm(raw);
   if (term.length < 4) {
