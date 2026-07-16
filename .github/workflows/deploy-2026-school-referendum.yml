@@ -28,6 +28,6 @@ jobs:
           role-to-assume: arn:aws:iam::003493200509:role/github-oss-tools-deploy
           aws-region: us-east-1
       - uses: aws-actions/amazon-ecr-login@v2
-      - run: docker build -t "$ECR_REPO:latest" -t "$ECR_REPO:${{ github.sha }}" .
+      - run: docker build --platform linux/amd64 -t "$ECR_REPO:latest" -t "$ECR_REPO:${{ github.sha }}" .
       - run: docker push --all-tags "$ECR_REPO"
 # App Runner auto-deploys when :latest changes.
