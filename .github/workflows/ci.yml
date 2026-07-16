@@ -1,0 +1,25 @@
+name: ci
+# Runs on every PR so the "test" check always reports a status — which is what
+# lets branch protection safely *require* it. (No path filter on purpose: a
+# required check that is skipped by a path filter blocks merges waiting for a
+# status that never arrives.)
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: noblesville/2026-school-referendum
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: noblesville/2026-school-referendum/package-lock.json
+      - run: npm ci
+      - run: npm run test

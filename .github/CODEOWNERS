@@ -1,0 +1,6 @@
+# Code owners for localtransparency/oss-tools
+# Every change requires review from a maintainer. Combined with branch
+# protection (merge restricted to maintainers), this is what enforces the
+# "nothing merges without a maintainer" rule described in CONTRIBUTING.md.
+
+*       @dmcnelis

@@ -1,0 +1,53 @@
+name: 🐛 Bug report
+description: Report a concrete, reproducible bug in an existing tool.
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Thanks for the report. Please make it **reproducible** — that's what
+        lets a maintainer confirm it and label it `approved` so a fix PR can be
+        opened.
+
+
+        **Security issue?** Do not file it here. Follow
+        [SECURITY.md](https://github.com/localtransparency/oss-tools/blob/main/SECURITY.md)
+        and use private reporting.
+  - type: input
+    id: tool
+    attributes:
+      label: Which tool / URL?
+      placeholder: e.g. noblesville.localtransparency.com/tools/2026-school-referendum
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What actually happened?
+      description: Include the wrong figure/output if relevant. Do NOT paste any personal address you looked up.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Numbered steps. A screenshot helps.
+      placeholder: |
+        1. Go to …
+        2. Enter …
+        3. See …
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Browser / device
+      placeholder: e.g. Safari 18 on iPhone, Chrome on macOS
+    validations:
+      required: false

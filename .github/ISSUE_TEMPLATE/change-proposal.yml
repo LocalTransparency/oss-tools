@@ -1,0 +1,50 @@
+name: 🛠️ Change proposal
+description: Propose a specific, actionable change to an existing tool. For open-ended ideas, use Discussions instead.
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        **Before filing:** open-ended ideas and "why is it built this way?"
+        questions belong in
+        [Discussions](https://github.com/localtransparency/oss-tools/discussions).
+        Use this form only for a concrete, actionable change.
+
+
+        Filing an issue does **not** mean the change is approved. A maintainer
+        will apply the **`approved`** label once it's accepted — that label is
+        the green light for a pull request (see CONTRIBUTING.md).
+  - type: input
+    id: tool
+    attributes:
+      label: Which tool?
+      placeholder: e.g. noblesville/2026-school-referendum
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: What specific change are you proposing?
+      description: Describe the concrete change and the outcome you expect.
+    validations:
+      required: true
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Why? (and sources, if it touches a figure)
+      description: >-
+        Explain the motivation. If the change touches a displayed figure, link
+        the official source — unsourced numbers are not merged.
+    validations:
+      required: true
+  - type: checkboxes
+    id: agreements
+    attributes:
+      label: Ground rules
+      options:
+        - label: This is a specific, actionable change (not an open-ended idea — those go to Discussions).
+          required: true
+        - label: The change is neutral and sourced (no advocacy), per the Code of Conduct.
+          required: true
+        - label: I understand a PR will only be reviewed after a maintainer labels this issue `approved`.
+          required: true

@@ -1,0 +1,15 @@
+# Disable blank issues so every issue goes through a template. Open-ended
+# questions and ideas belong in Discussions, not the actionable issue queue.
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussions — questions, ideas, "why is it built this way?"
+    url: https://github.com/localtransparency/oss-tools/discussions
+    about: >-
+      Start here for anything open-ended: methodology questions, proposals to
+      debate, or general discussion. Maintainers promote accepted ideas into
+      actionable issues.
+  - name: 🔒 Report a security vulnerability (private)
+    url: https://github.com/localtransparency/oss-tools/security/advisories/new
+    about: >-
+      Do NOT file vulnerabilities as public issues. Use private reporting — see
+      SECURITY.md.
