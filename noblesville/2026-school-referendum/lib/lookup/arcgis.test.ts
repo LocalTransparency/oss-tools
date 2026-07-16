@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { sanitizeSearchTerm, buildQueryUrl, parseResponse, searchParcels } from './arcgis';
+import {
+  sanitizeSearchTerm, normalizeStreetSuffixes, buildQueryUrl, parseResponse, searchParcels,
+} from './arcgis';
 import fixture from './fixtures/sample-response.json';
 
 describe('sanitizeSearchTerm', () => {
@@ -8,6 +10,26 @@ describe('sanitizeSearchTerm', () => {
   });
   it('strips SQL-meaningful characters', () => {
     expect(sanitizeSearchTerm(`123' OR 1=1;--`)).toBe('123 OR 11--');
+  });
+});
+
+describe('normalizeStreetSuffixes', () => {
+  it('replaces a full suffix word with its USPS abbreviation', () => {
+    expect(normalizeStreetSuffixes('1234 CONNER STREET')).toBe('1234 CONNER ST');
+  });
+  it('replaces LANE with LN', () => {
+    expect(normalizeStreetSuffixes('SMITH LANE')).toBe('SMITH LN');
+  });
+  it('does not touch a suffix word embedded inside a longer word', () => {
+    expect(normalizeStreetSuffixes('LANEWOOD DR')).toBe('LANEWOOD DR');
+  });
+  it('leaves already-abbreviated input unchanged', () => {
+    expect(normalizeStreetSuffixes('1234 CONNER ST')).toBe('1234 CONNER ST');
+  });
+  it('normalizes multiple common suffixes across the map', () => {
+    expect(normalizeStreetSuffixes('DRIVE ROAD COURT CIRCLE AVENUE')).toBe('DR RD CT CIR AVE');
+    expect(normalizeStreetSuffixes('BOULEVARD PLACE TRAIL PARKWAY TERRACE')).toBe('BLVD PL TRL PKWY TER');
+    expect(normalizeStreetSuffixes('HIGHWAY SQUARE POINT CROSSING RIDGE COMMONS')).toBe('HWY SQ PT XING RDG CMNS');
   });
 });
 
@@ -74,5 +96,15 @@ describe('searchParcels', () => {
     // patterns; none of the caller's quotes may survive into the clause.
     expect(where).toContain("LIKE '%123 OR 11-- MAIN ST%'");
     expect(where.match(/'/g)).toHaveLength(4);
+  });
+  it('normalizes full street-suffix words to USPS abbreviations before querying', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ features: [] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await searchParcels('1234 conner street');
+    const calledUrl = new URL(String(fetchMock.mock.calls[0][0]));
+    const where = calledUrl.searchParams.get('where')!;
+    expect(where).toContain("LIKE '%1234 CONNER ST%'");
   });
 });

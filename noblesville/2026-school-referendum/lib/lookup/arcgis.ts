@@ -27,6 +27,39 @@ export function sanitizeSearchTerm(raw: string): string {
     .trim();
 }
 
+// Hamilton County's parcel data stores USPS street-suffix abbreviations
+// (e.g. "LN", not "LANE"), so a user searching with the full word gets no
+// results. Map common full suffix words to their USPS abbreviation before
+// querying. Word-boundary matching only, so "LANEWOOD" is left untouched.
+const STREET_SUFFIX_ABBREVIATIONS: Record<string, string> = {
+  STREET: 'ST',
+  LANE: 'LN',
+  DRIVE: 'DR',
+  ROAD: 'RD',
+  COURT: 'CT',
+  CIRCLE: 'CIR',
+  AVENUE: 'AVE',
+  BOULEVARD: 'BLVD',
+  PLACE: 'PL',
+  TRAIL: 'TRL',
+  PARKWAY: 'PKWY',
+  TERRACE: 'TER',
+  HIGHWAY: 'HWY',
+  SQUARE: 'SQ',
+  POINT: 'PT',
+  CROSSING: 'XING',
+  RIDGE: 'RDG',
+  COMMONS: 'CMNS',
+};
+
+/** Applied to an already-sanitized, uppercased search term. */
+export function normalizeStreetSuffixes(term: string): string {
+  return Object.entries(STREET_SUFFIX_ABBREVIATIONS).reduce(
+    (acc, [full, abbr]) => acc.replace(new RegExp(`\\b${full}\\b`, 'g'), abbr),
+    term,
+  );
+}
+
 export function buildQueryUrl(term: string): string {
   const where =
     `UPPER(LOCADDRESS) LIKE '%${term}%' AND UPPER(TAXDISTNAM) LIKE '%NOBLESVILLE%'`;
@@ -86,7 +119,7 @@ export async function searchParcels(term: string): Promise<ParcelCandidate[]> {
   // Defense-in-depth: sanitize here regardless of whether the caller already
   // did (sanitization is idempotent), so no raw input ever reaches the where
   // clause built by buildQueryUrl.
-  const safe = sanitizeSearchTerm(term);
+  const safe = normalizeStreetSuffixes(sanitizeSearchTerm(term));
   let json: unknown;
   try {
     const res = await fetch(buildQueryUrl(safe), { signal: AbortSignal.timeout(8000) });
