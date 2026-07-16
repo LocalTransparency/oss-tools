@@ -14,10 +14,10 @@ describe('sanitizeSearchTerm', () => {
 });
 
 describe('normalizeStreetSuffixes', () => {
-  it('replaces a full suffix word with its USPS abbreviation', () => {
+  it('replaces a full terminal suffix word with its USPS abbreviation', () => {
     expect(normalizeStreetSuffixes('1234 CONNER STREET')).toBe('1234 CONNER ST');
   });
-  it('replaces LANE with LN', () => {
+  it('replaces terminal LANE with LN', () => {
     expect(normalizeStreetSuffixes('SMITH LANE')).toBe('SMITH LN');
   });
   it('does not touch a suffix word embedded inside a longer word', () => {
@@ -26,10 +26,21 @@ describe('normalizeStreetSuffixes', () => {
   it('leaves already-abbreviated input unchanged', () => {
     expect(normalizeStreetSuffixes('1234 CONNER ST')).toBe('1234 CONNER ST');
   });
-  it('normalizes multiple common suffixes across the map', () => {
-    expect(normalizeStreetSuffixes('DRIVE ROAD COURT CIRCLE AVENUE')).toBe('DR RD CT CIR AVE');
-    expect(normalizeStreetSuffixes('BOULEVARD PLACE TRAIL PARKWAY TERRACE')).toBe('BLVD PL TRL PKWY TER');
-    expect(normalizeStreetSuffixes('HIGHWAY SQUARE POINT CROSSING RIDGE COMMONS')).toBe('HWY SQ PT XING RDG CMNS');
+  it('only normalizes the final token, leaving suffix-like name words alone', () => {
+    expect(normalizeStreetSuffixes('RIDGE POINT DRIVE')).toBe('RIDGE POINT DR');
+    expect(normalizeStreetSuffixes('TERRACE PARK BLVD')).toBe('TERRACE PARK BLVD');
+  });
+  it('normalizes every suffix in the map when terminal', () => {
+    const pairs: Array<[string, string]> = [
+      ['STREET', 'ST'], ['LANE', 'LN'], ['DRIVE', 'DR'], ['ROAD', 'RD'],
+      ['COURT', 'CT'], ['CIRCLE', 'CIR'], ['AVENUE', 'AVE'], ['BOULEVARD', 'BLVD'],
+      ['PLACE', 'PL'], ['TRAIL', 'TRL'], ['PARKWAY', 'PKWY'], ['TERRACE', 'TER'],
+      ['HIGHWAY', 'HWY'], ['SQUARE', 'SQ'], ['POINT', 'PT'], ['CROSSING', 'XING'],
+      ['RIDGE', 'RDG'], ['COMMONS', 'CMNS'],
+    ];
+    for (const [full, abbr] of pairs) {
+      expect(normalizeStreetSuffixes(`123 OAK ${full}`)).toBe(`123 OAK ${abbr}`);
+    }
   });
 });
 
@@ -42,6 +53,18 @@ describe('buildQueryUrl', () => {
     expect(where).toContain("TAXDISTNAM) LIKE '%NOBLESVILLE%'");
     expect(url.searchParams.get('resultRecordCount')).toBe('10');
     expect(url.searchParams.get('returnGeometry')).toBe('false');
+  });
+  it('matches either variant when a normalized alternative differs from the raw term', () => {
+    const url = new URL(buildQueryUrl('1234 CONNER STREET', '1234 CONNER ST'));
+    const where = url.searchParams.get('where')!;
+    expect(where).toContain("(UPPER(LOCADDRESS) LIKE '%1234 CONNER STREET%' OR UPPER(LOCADDRESS) LIKE '%1234 CONNER ST%')");
+    expect(where).toContain("TAXDISTNAM) LIKE '%NOBLESVILLE%'");
+  });
+  it('keeps the single-condition clause when the normalized term is identical', () => {
+    const url = new URL(buildQueryUrl('1234 CONNER ST', '1234 CONNER ST'));
+    const where = url.searchParams.get('where')!;
+    expect(where.match(/LOCADDRESS/g)).toHaveLength(1);
+    expect(where.match(/'/g)).toHaveLength(4);
   });
 });
 
@@ -97,7 +120,7 @@ describe('searchParcels', () => {
     expect(where).toContain("LIKE '%123 OR 11-- MAIN ST%'");
     expect(where.match(/'/g)).toHaveLength(4);
   });
-  it('normalizes full street-suffix words to USPS abbreviations before querying', async () => {
+  it('queries both the raw term and the suffix-normalized term when they differ', async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(new Response(JSON.stringify({ features: [] }), { status: 200 }));
@@ -105,6 +128,34 @@ describe('searchParcels', () => {
     await searchParcels('1234 conner street');
     const calledUrl = new URL(String(fetchMock.mock.calls[0][0]));
     const where = calledUrl.searchParams.get('where')!;
+    expect(where).toContain("LIKE '%1234 CONNER STREET%'");
     expect(where).toContain("LIKE '%1234 CONNER ST%'");
+    // Two LOCADDRESS LIKE patterns + the district filter = 6 delimiting quotes.
+    expect(where.match(/'/g)).toHaveLength(6);
+  });
+  it('keeps a single LOCADDRESS condition when normalization is a no-op', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ features: [] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await searchParcels('1234 conner st');
+    const calledUrl = new URL(String(fetchMock.mock.calls[0][0]));
+    const where = calledUrl.searchParams.get('where')!;
+    expect(where.match(/LOCADDRESS/g)).toHaveLength(1);
+    expect(where.match(/'/g)).toHaveLength(4);
+  });
+  it('sanitizes injection attempts even when the OR-variant clause is used', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ features: [] }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await searchParcels(`123' OR 1=1;-- main street`);
+    const calledUrl = new URL(String(fetchMock.mock.calls[0][0]));
+    const where = calledUrl.searchParams.get('where')!;
+    expect(where).toContain("LIKE '%123 OR 11-- MAIN STREET%'");
+    expect(where).toContain("LIKE '%123 OR 11-- MAIN ST%'");
+    // The only single quotes allowed are the six that delimit the three LIKE
+    // patterns; none of the caller's quotes may survive into the clause.
+    expect(where.match(/'/g)).toHaveLength(6);
   });
 });

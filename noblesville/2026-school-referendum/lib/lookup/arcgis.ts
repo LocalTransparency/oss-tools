@@ -30,7 +30,9 @@ export function sanitizeSearchTerm(raw: string): string {
 // Hamilton County's parcel data stores USPS street-suffix abbreviations
 // (e.g. "LN", not "LANE"), so a user searching with the full word gets no
 // results. Map common full suffix words to their USPS abbreviation before
-// querying. Word-boundary matching only, so "LANEWOOD" is left untouched.
+// querying. Only the final token of the term is a street suffix; earlier
+// words are part of the street name and must not be rewritten (e.g.
+// "TERRACE PARK BLVD", "RIDGE POINT DR").
 const STREET_SUFFIX_ABBREVIATIONS: Record<string, string> = {
   STREET: 'ST',
   LANE: 'LN',
@@ -54,15 +56,26 @@ const STREET_SUFFIX_ABBREVIATIONS: Record<string, string> = {
 
 /** Applied to an already-sanitized, uppercased search term. */
 export function normalizeStreetSuffixes(term: string): string {
-  return Object.entries(STREET_SUFFIX_ABBREVIATIONS).reduce(
-    (acc, [full, abbr]) => acc.replace(new RegExp(`\\b${full}\\b`, 'g'), abbr),
-    term,
-  );
+  const words = term.trim().split(/\s+/);
+  if (words.length === 0) return term;
+  const last = words[words.length - 1];
+  const abbr = STREET_SUFFIX_ABBREVIATIONS[last];
+  if (!abbr) return term;
+  return [...words.slice(0, -1), abbr].join(' ');
 }
 
-export function buildQueryUrl(term: string): string {
+/**
+ * When a suffix-normalized variant of the term is provided and differs from
+ * the raw term, match EITHER variant, so input typed exactly as the county
+ * stores it can never do worse than a plain substring search.
+ */
+export function buildQueryUrl(term: string, normalizedTerm: string = term): string {
+  const addressClause =
+    normalizedTerm !== term
+      ? `(UPPER(LOCADDRESS) LIKE '%${term}%' OR UPPER(LOCADDRESS) LIKE '%${normalizedTerm}%')`
+      : `UPPER(LOCADDRESS) LIKE '%${term}%'`;
   const where =
-    `UPPER(LOCADDRESS) LIKE '%${term}%' AND UPPER(TAXDISTNAM) LIKE '%NOBLESVILLE%'`;
+    `${addressClause} AND UPPER(TAXDISTNAM) LIKE '%NOBLESVILLE%'`;
   const params = new URLSearchParams({
     where,
     outFields: OUT_FIELDS,
@@ -119,10 +132,11 @@ export async function searchParcels(term: string): Promise<ParcelCandidate[]> {
   // Defense-in-depth: sanitize here regardless of whether the caller already
   // did (sanitization is idempotent), so no raw input ever reaches the where
   // clause built by buildQueryUrl.
-  const safe = normalizeStreetSuffixes(sanitizeSearchTerm(term));
+  const safe = sanitizeSearchTerm(term);
+  const normalized = normalizeStreetSuffixes(safe);
   let json: unknown;
   try {
-    const res = await fetch(buildQueryUrl(safe), { signal: AbortSignal.timeout(8000) });
+    const res = await fetch(buildQueryUrl(safe, normalized), { signal: AbortSignal.timeout(8000) });
     if (!res.ok) throw new Error('upstream');
     json = await res.json();
   } catch {
