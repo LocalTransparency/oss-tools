@@ -24,3 +24,9 @@ separate Amplify app pointing at its `appRoot`.
 - **Sourced:** every displayed figure carries a citation to an official source.
 - **Private:** nothing a visitor enters is stored or logged.
 - **Verifiable:** the math runs in the open — read it, test it, reproduce it.
+
+## License
+
+[MIT](LICENSE) © Local Transparency. Reuse it, fork it, build your own local
+tools — attribution appreciated. Contributions are governed by
+[CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md).
