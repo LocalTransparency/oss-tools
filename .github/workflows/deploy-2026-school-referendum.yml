@@ -1,0 +1,33 @@
+name: deploy-2026-school-referendum
+on:
+  push:
+    branches: [main]
+    paths: ['noblesville/2026-school-referendum/**']
+permissions:
+  id-token: write
+  contents: read
+env:
+  ECR_REPO: 003493200509.dkr.ecr.us-east-1.amazonaws.com/oss-tools/2026-school-referendum
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: noblesville/2026-school-referendum
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: noblesville/2026-school-referendum/package-lock.json
+      - run: npm ci
+      - run: npm run test
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::003493200509:role/github-oss-tools-deploy
+          aws-region: us-east-1
+      - uses: aws-actions/amazon-ecr-login@v2
+      - run: docker build -t "$ECR_REPO:latest" -t "$ECR_REPO:${{ github.sha }}" .
+      - run: docker push --all-tags "$ECR_REPO"
+# App Runner auto-deploys when :latest changes.

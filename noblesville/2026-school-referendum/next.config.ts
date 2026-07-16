@@ -4,6 +4,7 @@ const basePath = "/tools/2026-school-referendum";
 
 const nextConfig: NextConfig = {
   basePath,
+  output: "standalone",
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath,
   },
