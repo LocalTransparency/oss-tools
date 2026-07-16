@@ -13,4 +13,8 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 EXPOSE 3000
 USER node
-CMD ["node", "server.js"]
+# App Runner (Fargate) overrides the HOSTNAME env var with the container's
+# internal hostname at runtime, which makes Next.js standalone bind to that
+# hostname instead of 0.0.0.0 and fail App Runner's loopback health check.
+# Force the bind address at process level so runtime injection can't break it.
+CMD ["sh", "-c", "HOSTNAME=0.0.0.0 node server.js"]
