@@ -126,7 +126,10 @@ export default function Methodology() {
         <h2 className="text-lg font-medium">Privacy</h2>
         <p className="text-sm">
           Addresses you enter are forwarded to Hamilton County&rsquo;s public parcel service to find your
-          assessed value and are not stored or logged by this site. All tax math runs in your browser.
+          assessed value. They are never stored, logged, or sent to analytics. County responses are
+          cached in memory for up to ten minutes to reduce load during busy periods — never written to
+          disk or logs. We collect basic anonymous usage statistics (page views) via Google Tag Manager;
+          nothing you type into this site is included. All tax math runs in your browser.
         </p>
       </section>
     </main>

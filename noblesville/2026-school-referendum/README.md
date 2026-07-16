@@ -3,7 +3,8 @@
 Neutral, sourced estimates of a Noblesville homeowner's property tax bill if the
 November 2026 Noblesville Schools operating referendum passes or fails, under
 Indiana's SEA 1 (2025) rules. Assessed values come from Hamilton County's public
-parcel data at lookup time; nothing a visitor enters is stored or logged.
+parcel data at lookup time; nothing a visitor enters is stored or logged. Anonymous
+page-view analytics only; user input never reaches analytics.
 
 - Spec: `docs/superpowers/specs/2026-07-15-referendum-tax-app-design.md`
 - All tax rates/parameters with sources: `lib/tax/assumptions.ts`

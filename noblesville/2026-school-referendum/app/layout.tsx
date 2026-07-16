@@ -42,7 +42,8 @@ export default function RootLayout({
         {children}
         <footer className="mx-auto max-w-3xl p-6 text-xs text-gray-600 dark:text-gray-400">
           This site is not affiliated with Noblesville Schools or any campaign. Estimates only — not a
-          bill. No addresses or lookups are stored.
+          bill. Addresses you search are never stored, logged, or sent to analytics. Basic anonymous
+          usage statistics are collected.
         </footer>
       </body>
     </html>
