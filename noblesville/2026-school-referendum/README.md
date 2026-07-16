@@ -18,10 +18,11 @@ page-view analytics only; user input never reaches analytics.
 
 ## Deploy
 
-Runs as a container on AWS App Runner behind CloudFront (infrastructure defined in the
-private `localtransparency/infrastructure` CDK repo). Every push to `main` that touches
-this app builds the image in GitHub Actions (tests run first) and pushes it to ECR;
-App Runner auto-deploys the new image. The app serves under its `basePath`
+Runs as a container on Amazon ECS Express Mode (Fargate) behind CloudFront (infrastructure
+defined in the private `localtransparency/infrastructure` CDK repo). Every push to `main` that
+touches this app builds the image in GitHub Actions (tests run first) and pushes it to ECR,
+then rolls the ECS service (`aws ecs update-service … --force-new-deployment`) to re-pull it —
+Express Mode does not auto-deploy on a push. The app serves under its `basePath`
 (`/tools/2026-school-referendum`); the domain root is handled by CloudFront.
 
 ## Updating numbers
