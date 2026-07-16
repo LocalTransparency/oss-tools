@@ -53,6 +53,52 @@ export default function Methodology() {
         </p>
       </section>
 
+      {/*
+        FAQ crossover thresholds below (Noblesville City taxing district, total rate 2.5549%,
+        non-referendum rate 2.1049% = 2.5549% − 0.45% current referendum total) are derived, not
+        computed at runtime — kept as literals with the derivation cited here so they can be checked
+        against the engine (see the guard tests in lib/tax/scenarios.test.ts):
+          - $333k cap-binding threshold: circuit breaker binds when non-referendum tax on pay-2027 net
+            AV exceeds the 1% cap on gross AV:
+              2.1049% × 0.54 × (AV − 40000) > 1% × AV  →  AV ≈ $333,000
+            (0.54 = 1 − 0.46 pay-2027 supplemental deduction rate; $40,000 = pay-2027 standard deduction)
+          - $440k pass-vs-current crossover: referendum tax at the committed 2027 rate on pay-2027 net AV
+            equals referendum tax at the current rate on pay-2026 net AV:
+              0.41% × 0.54 × (AV − 40000) = 0.37% × 0.60 × (AV − 48000)  →  AV ≈ $440,000
+            (0.60 = 1 − 0.40 pay-2026 supplemental deduction rate; $48,000 = pay-2026 standard deduction)
+      */}
+      <section className="space-y-2">
+        <h2 className="text-lg font-medium">Why does my estimate go down if it passes?</h2>
+        <p className="text-sm">
+          For many higher-value owner-occupied homes, the estimate with the referendum passing (at
+          the district&rsquo;s committed ${committed2027} rate) is slightly <em>lower</em> than the current bill.
+          That isn&rsquo;t an error — it&rsquo;s how the 2025 property tax law interacts with the two referendum
+          rates:
+        </p>
+        <ul className="list-disc space-y-1 pl-5 text-sm">
+          <li>
+            Above roughly $333,000 in assessed value (in Noblesville City&rsquo;s taxing district), the 1%
+            constitutional cap already limits the non-referendum part of the bill, so that part is the
+            same whether the referendum passes or fails.
+          </li>
+          <li>
+            What changes is the referendum line: today&rsquo;s ${currentOperating} operating rate applies to
+            this year&rsquo;s net assessed value; the proposed ${committed2027} would apply to next
+            year&rsquo;s net assessed value, which the 2025 law makes substantially smaller — and the
+            reduction is proportionally larger for higher-value homes.
+          </li>
+          <li>
+            Above about $440,000 assessed value, the shrinking net assessed value outweighs the higher
+            rate, so the estimated bill dips slightly below today&rsquo;s.
+          </li>
+        </ul>
+        <p className="text-sm">
+          This applies at the district&rsquo;s committed ${committed2027} rate. At the ballot&rsquo;s authorized
+          maximum of ${proposedMax}, the estimate increases for homes at every value — which is why both
+          figures are always shown.
+        </p>
+      </section>
+
       <section className="space-y-2">
         <h2 className="text-lg font-medium">The 2025 property tax law (SEA 1)</h2>
         <p className="text-sm">

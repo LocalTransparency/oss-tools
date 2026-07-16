@@ -30,4 +30,25 @@ describe('computeAllScenarios', () => {
     expect(r.passCommitted.total).toBeCloseTo(2921.06, 2);
     expect(r.passCommitted.total).toBeLessThan(r.current.total);
   });
+
+  // Guards the methodology FAQ ("Why does my estimate go down if it passes?"),
+  // which claims: crossover near $440k AV, decrease above it, increase below it —
+  // at the district's committed $0.41 rate, for Noblesville City.
+  describe('methodology FAQ crossover claims (Noblesville City, committed $0.41 rate)', () => {
+    it('at $440k AV, pass-committed total ≈ current total (crossover point)', () => {
+      const r = computeAllScenarios(440000, city);
+      expect(r.passCommitted.total).toBeCloseTo(r.current.total, 0); // within $1
+    });
+
+    it('at $500k AV, pass-committed decreases and pass-max increases vs. current', () => {
+      const r = computeAllScenarios(500000, city);
+      expect(r.passCommitted.total).toBeLessThan(r.current.total);
+      expect(r.passMax.total).toBeGreaterThan(r.current.total);
+    });
+
+    it('at $350k AV, pass-committed increases vs. current', () => {
+      const r = computeAllScenarios(350000, city);
+      expect(r.passCommitted.total).toBeGreaterThan(r.current.total);
+    });
+  });
 });
