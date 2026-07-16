@@ -1,26 +1,65 @@
 @import "tailwindcss";
+@import "@localtransparency/design/tokens.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* Map the shared design tokens into Tailwind's theme so utilities resolve to
+   @localtransparency/design: bg-bg, bg-surface, text-fg, text-muted,
+   border-border, text-accent, bg-warning-bg, font-serif, etc. Theming (light
+   default, auto dark via prefers-color-scheme, forced via [data-theme]) all
+   comes from tokens.css. */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--lt-bg);
+  --color-surface: var(--lt-surface);
+  --color-surface-2: var(--lt-surface-2);
+  --color-fg: var(--lt-fg);
+  --color-muted: var(--lt-muted);
+  --color-border: var(--lt-border);
+  --color-border-strong: var(--lt-border-strong);
+  --color-accent: var(--lt-accent);
+  --color-accent-hover: var(--lt-accent-hover);
+  --color-accent-weak: var(--lt-accent-weak);
+  --color-accent-contrast: var(--lt-accent-contrast);
+  --color-warning-fg: var(--lt-warning-fg);
+  --color-warning-bg: var(--lt-warning-bg);
+  --color-warning-border: var(--lt-warning-border);
+  --font-sans: var(--lt-font-sans);
+  --font-serif: var(--lt-font-serif);
+  --font-mono: var(--lt-font-mono);
+  --radius-md: var(--lt-radius-md);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Point the token font variables at the self-hosted next/font families (set on
+   <html> in layout.tsx) so nothing loads from a font CDN (privacy). */
+:root {
+  --lt-font-sans: var(--font-public-sans), system-ui, -apple-system, sans-serif;
+  --lt-font-serif: var(--font-source-serif), Georgia, 'Times New Roman', serif;
+  --lt-font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 }
+
+/* tokens.css doesn't set color-scheme; add it (mirroring the tokens' own
+   light / auto-dark / forced-[data-theme] logic) so native controls and
+   scrollbars render in the active theme. */
+:root { color-scheme: light; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) { color-scheme: dark; }
+}
+:root[data-theme='dark'] { color-scheme: dark; }
+:root[data-theme='light'] { color-scheme: light; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--lt-bg);
+  color: var(--lt-fg);
+  font-family: var(--lt-font-sans);
+}
+
+/* Headings use the institutional serif; numbers/citations use mono via
+   font-mono utilities in the components. */
+h1, h2, h3 {
+  font-family: var(--lt-font-serif);
+}
+
+/* Visible keyboard focus everywhere, in the token focus color. */
+:focus-visible {
+  outline: 2px solid var(--lt-focus);
+  outline-offset: 2px;
+  border-radius: var(--lt-radius-sm);
 }
