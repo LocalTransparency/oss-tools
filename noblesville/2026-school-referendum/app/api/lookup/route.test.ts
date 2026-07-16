@@ -53,7 +53,9 @@ describe('POST /api/lookup', () => {
   it('maps upstream failure to 502', async () => {
     const err = new Error('upstream');
     mockSearch.mockRejectedValueOnce(err);
-    const res = await POST(req({ q: '1234 conner st' }));
+    // A query term not used by other tests in this file, so it can't hit a
+    // cache entry left behind by an earlier successful lookup.
+    const res = await POST(req({ q: '5678 failure ave' }));
     expect(res.status).toBe(502);
     const body = await res.json();
     expect(body.error).toBe('upstream');
@@ -73,5 +75,42 @@ describe('POST /api/lookup', () => {
     expect(mockSearch).not.toHaveBeenCalled();
     const body = await res.json();
     expect(body.error).toBe('query-too-short');
+  });
+});
+
+describe('POST /api/lookup — caching', () => {
+  const result = [
+    {
+      parcelNo: '999', stateParcelNo: '1', address: '99 CACHE LN', city: 'Noblesville',
+      zip: '46060', grossAV: 200000, assessmentYear: 2026, homestead: true,
+      taxDistrictName: 'Noblesville City', propertyReportUrl: '',
+    },
+  ];
+
+  it('caches a successful result and serves the second identical query without hitting searchParcels', async () => {
+    mockSearch.mockResolvedValue(result);
+
+    const first = await POST(req({ q: '99 cache ln' }));
+    expect(first.status).toBe(200);
+    expect((await first.json()).candidates).toEqual(result);
+    expect(mockSearch).toHaveBeenCalledTimes(1);
+
+    const second = await POST(req({ q: '99 cache ln' }));
+    expect(second.status).toBe(200);
+    expect((await second.json()).candidates).toEqual(result);
+    expect(mockSearch).toHaveBeenCalledTimes(1); // still 1 — served from cache
+  });
+
+  it('does not cache an upstream failure, so the next identical query retries', async () => {
+    mockSearch.mockRejectedValueOnce(new Error('upstream'));
+    mockSearch.mockResolvedValueOnce(result);
+
+    const first = await POST(req({ q: '77 retry rd' }));
+    expect(first.status).toBe(502);
+
+    const second = await POST(req({ q: '77 retry rd' }));
+    expect(second.status).toBe(200);
+    expect((await second.json()).candidates).toEqual(result);
+    expect(mockSearch).toHaveBeenCalledTimes(2); // retried — the failure wasn't cached
   });
 });
