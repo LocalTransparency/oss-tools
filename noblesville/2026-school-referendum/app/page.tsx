@@ -8,11 +8,11 @@ export default function Home() {
         <h1 className="text-2xl font-semibold">
           Noblesville Schools Referendum: what it means for your property taxes
         </h1>
-        <p className="text-sm text-gray-700 dark:text-gray-300">
+        <p className="text-sm text-muted">
           On November 3, 2026, Noblesville voters will decide an operating referendum for Noblesville
           Schools. Enter your address to see an estimate of your property tax bill today, if the
           referendum passes, and if it fails — with every number sourced and every step of the math shown.{' '}
-          <Link className="underline" href="/methodology">How these estimates work</Link>.
+          <Link className="text-accent underline" href="/methodology">How these estimates work</Link>.
         </p>
       </header>
       <Calculator />

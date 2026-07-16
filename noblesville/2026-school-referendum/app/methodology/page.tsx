@@ -21,7 +21,7 @@ export default function Methodology() {
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-6">
       <h1 className="text-2xl font-semibold">How these estimates work</h1>
-      <p><Link className="underline" href="/">← Back to the calculator</Link></p>
+      <p><Link className="text-accent underline" href="/">← Back to the calculator</Link></p>
 
       <section className="space-y-2">
         <h2 className="text-lg font-medium">What&rsquo;s on the ballot</h2>
@@ -31,8 +31,8 @@ export default function Methodology() {
           operating referendum (${currentOperating}), which expires after 2026. A separate ${debt} referendum debt rate,
           approved in 2010, continues through {debtEndYear} <em>regardless of this vote</em> — so &ldquo;fails&rdquo;
           does not mean zero referendum tax.{' '}
-          <a className="underline" href={SOURCES.dlgfDetermination}>DLGF determination</a> ·{' '}
-          <a className="underline" href={SOURCES.districtReferendumPage}>district referendum page</a>
+          <a className="text-accent underline" href={SOURCES.dlgfDetermination}>DLGF determination</a> ·{' '}
+          <a className="text-accent underline" href={SOURCES.districtReferendumPage}>district referendum page</a>
         </p>
       </section>
 
@@ -43,7 +43,7 @@ export default function Methodology() {
           than ${committed2027} for 2027 (and says it will not use the full ${proposedMax} in all eight years), but that
           commitment is not legally binding and later years may be higher. We show the bill at ${committed2027} and
           at ${proposedMax} so you can see both the plan and the ceiling.{' '}
-          <a className="underline" href={REFERENDUM.committed2027.source}>Source</a>
+          <a className="text-accent underline" href={REFERENDUM.committed2027.source}>Source</a>
         </p>
         <p className="text-sm">
           This is also why you may have seen two very different cost figures: the ballot&rsquo;s
@@ -108,14 +108,14 @@ export default function Methodology() {
           that excludes referendum taxes. Because referendum rates apply to that shrinking net assessed
           value, a {proposedMaxCents}&cent; maximum in 2027 raises fewer dollars per home than it would have in 2026 —
           which is the district&rsquo;s stated reason the replacement maximum is higher than the expiring
-          {' '}{currentOperatingCents}&cent; rate. <a className="underline" href={SOURCES.sea1Memo}>DLGF guidance memo</a>
+          {' '}{currentOperatingCents}&cent; rate. <a className="text-accent underline" href={SOURCES.sea1Memo}>DLGF guidance memo</a>
         </p>
       </section>
 
       <section className="space-y-2">
         <h2 className="text-lg font-medium">Estimates, not bills</h2>
         <ul className="list-disc space-y-1 pl-5 text-sm">
-          <li>2027 non-referendum rates are not certified until January 2027; we hold them at certified 2026 levels (<a className="underline" href={SOURCES.budgetOrder2026}>2026 budget order</a>).</li>
+          <li>2027 non-referendum rates are not certified until January 2027; we hold them at certified 2026 levels (<a className="text-accent underline" href={SOURCES.budgetOrder2026}>2026 budget order</a>).</li>
           <li>Assessed values come from Hamilton County&rsquo;s public parcel data at lookup time and reflect the most recent assessment.</li>
           <li>This tool models owner-occupied homesteads only (1% cap class). Rentals, farms, and businesses follow different rules.</li>
           <li>Other deductions some households have (mortgage age 65+, veteran, etc.) are not modeled and would lower all three columns.</li>

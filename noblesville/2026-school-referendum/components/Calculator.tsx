@@ -77,46 +77,46 @@ export default function Calculator() {
         <div className="flex gap-2">
           <input
             id="address"
-            className="w-full rounded border p-2"
+            className="w-full rounded-md border border-border bg-surface p-2"
             placeholder="e.g. 1234 Conner St"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoComplete="street-address"
           />
           <button type="submit" disabled={busy || query.trim().length < 4}
-            className="rounded border px-4 py-2 font-medium disabled:opacity-50">
+            className="rounded-md bg-accent px-4 py-2 font-medium text-accent-contrast hover:bg-accent-hover disabled:opacity-50">
             {busy ? 'Searching…' : 'Look up'}
           </button>
         </div>
-        <p className="text-xs text-gray-600 dark:text-gray-400">
+        <p className="text-xs text-muted">
           Your address is sent to Hamilton County&rsquo;s public parcel service to find your assessed
           value. It is not stored or logged by this site.
         </p>
       </form>
 
-      <button type="button" className="text-sm underline" onClick={() => setManualOpen((v) => !v)}>
+      <button type="button" className="text-sm text-accent underline" onClick={() => setManualOpen((v) => !v)}>
         Enter assessed value manually
       </button>
 
       {manualOpen && (
-        <form onSubmit={calculateManual} className="space-y-2 rounded border p-4">
+        <form onSubmit={calculateManual} className="space-y-2 rounded-md border border-border bg-surface p-4">
           <label htmlFor="manual-av" className="block font-medium">Gross assessed value</label>
-          <input id="manual-av" className="w-full rounded border p-2" inputMode="numeric"
+          <input id="manual-av" className="w-full rounded-md border border-border bg-surface p-2" inputMode="numeric"
             placeholder="e.g. 350000" value={manualAV} onChange={(e) => setManualAV(e.target.value)} />
           <label htmlFor="manual-district" className="block font-medium">Taxing district</label>
-          <select id="manual-district" className="w-full rounded border p-2"
+          <select id="manual-district" className="w-full rounded-md border border-border bg-surface p-2"
             value={manualDistrict} onChange={(e) => setManualDistrict(e.target.value)}>
             {DISTRICTS.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
           </select>
-          <p className="text-xs text-gray-600 dark:text-gray-400">
+          <p className="text-xs text-muted">
             Inside Noblesville city limits, choose Noblesville City. Not sure? Your taxing district is
             printed on your tax bill (Form TS-1).
           </p>
-          <button type="submit" className="rounded border px-4 py-2 font-medium">Calculate</button>
+          <button type="submit" className="rounded-md bg-accent px-4 py-2 font-medium text-accent-contrast hover:bg-accent-hover">Calculate</button>
         </form>
       )}
 
-      {error && <p role="alert" className="rounded border border-amber-400 bg-amber-50 p-3 text-sm dark:bg-amber-950">{error}</p>}
+      {error && <p role="alert" className="rounded-md border border-warning-border bg-warning-bg p-3 text-sm text-warning-fg">{error}</p>}
 
       {candidates && candidates.length === 0 && (
         <p className="text-sm">
@@ -129,7 +129,7 @@ export default function Calculator() {
         <ul className="space-y-1">
           {candidates.map((c) => (
             <li key={c.parcelNo}>
-              <button type="button" onClick={() => select(c)} className="w-full rounded border p-2 text-left hover:bg-gray-50 dark:hover:bg-gray-900">
+              <button type="button" onClick={() => select(c)} className="w-full rounded-md border border-border bg-surface p-2 text-left hover:bg-surface-2">
                 {c.address}, {c.city} {c.zip} — gross AV {fmtDollars(c.grossAV)}
               </button>
             </li>
@@ -138,7 +138,7 @@ export default function Calculator() {
       )}
 
       {outOfDistrict && (
-        <p role="alert" className="rounded border p-3 text-sm">
+        <p role="alert" className="rounded-md border border-border bg-surface p-3 text-sm">
           This tool covers homes in the Noblesville Schools district (its five Hamilton County taxing
           districts). That parcel&rsquo;s taxing district isn&rsquo;t one of them, so its school rates differ
           and these numbers wouldn&rsquo;t apply.
