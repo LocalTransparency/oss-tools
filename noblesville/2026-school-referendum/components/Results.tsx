@@ -61,36 +61,33 @@ export default function Results({ grossAV, district, homestead, assessmentYear, 
         </p>
       )}
 
-      <table className="w-full border-collapse">
-        <thead>
-          <tr>
-            <th className="p-2 text-left" scope="col">&nbsp;</th>
-            <th className="p-2 text-right" scope="col">Current<br /><span className="font-normal text-xs">pay-2026</span></th>
-            <th className="p-2 text-right" scope="col">If it passes<br /><span className="font-normal text-xs">pay-2027 est.</span></th>
-            <th className="p-2 text-right" scope="col">If it fails<br /><span className="font-normal text-xs">pay-2027 est.</span></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr className="border-t">
-            <th className="p-2 text-left font-medium" scope="row">Estimated annual bill</th>
-            <td className="p-2 text-right text-lg tabular-nums">{fmtDollars(r.current.total)}</td>
-            <td className="p-2 text-right">
-              <div className="text-lg tabular-nums">{fmtDollars(r.passCommitted.total)}</div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">
-                at the district&rsquo;s committed 2027 rate (${REFERENDUM.committed2027.value.toFixed(2)}); up to {fmtDollars(r.passMax.total)} if the
-                full authorized ${REFERENDUM.proposedMax.value.toFixed(2)} were levied
-              </div>
-            </td>
-            <td className="p-2 text-right text-lg tabular-nums">{fmtDollars(r.fail.total)}</td>
-          </tr>
-          <tr className="border-t">
-            <th className="p-2 text-left font-medium" scope="row">Change vs. current bill</th>
-            <td className="p-2 text-right">—</td>
-            <td className="p-2 text-right tabular-nums">{fmtDelta(r.passCommitted.total - r.current.total)}/yr</td>
-            <td className="p-2 text-right tabular-nums">{fmtDelta(r.fail.total - r.current.total)}/yr</td>
-          </tr>
-        </tbody>
-      </table>
+      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <li className="rounded border p-4">
+          <div className="font-medium">Current<br /><span className="font-normal text-xs text-gray-600 dark:text-gray-400">pay-2026</span></div>
+          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">Estimated annual bill</p>
+          <div className="text-lg tabular-nums">{fmtDollars(r.current.total)}</div>
+          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">Change vs. current bill</p>
+          <div className="tabular-nums">—</div>
+        </li>
+        <li className="rounded border p-4">
+          <div className="font-medium">If it passes<br /><span className="font-normal text-xs text-gray-600 dark:text-gray-400">pay-2027 est.</span></div>
+          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">Estimated annual bill</p>
+          <div className="text-lg tabular-nums">{fmtDollars(r.passCommitted.total)}</div>
+          <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+            at the district&rsquo;s committed 2027 rate (${REFERENDUM.committed2027.value.toFixed(2)}); up to {fmtDollars(r.passMax.total)} if the
+            full authorized ${REFERENDUM.proposedMax.value.toFixed(2)} were levied
+          </div>
+          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">Change vs. current bill</p>
+          <div className="tabular-nums">{fmtDelta(r.passCommitted.total - r.current.total)}/yr</div>
+        </li>
+        <li className="rounded border p-4">
+          <div className="font-medium">If it fails<br /><span className="font-normal text-xs text-gray-600 dark:text-gray-400">pay-2027 est.</span></div>
+          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">Estimated annual bill</p>
+          <div className="text-lg tabular-nums">{fmtDollars(r.fail.total)}</div>
+          <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">Change vs. current bill</p>
+          <div className="tabular-nums">{fmtDelta(r.fail.total - r.current.total)}/yr</div>
+        </li>
+      </ul>
 
       <div className="rounded border p-4">
         <h2 className="font-medium">Difference between passing and failing</h2>
