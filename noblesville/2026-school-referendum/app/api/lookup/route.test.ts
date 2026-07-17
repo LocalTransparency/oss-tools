@@ -1,14 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('@/lib/lookup/arcgis', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('@/lib/lookup/arcgis')>();
-  return { ...mod, searchParcels: vi.fn() };
-});
+vi.mock('@/lib/lookup/counties', () => ({
+  COUNTY_SOURCES: { hamilton: { county: 'Hamilton', search: vi.fn() } },
+}));
 
 import { POST } from './route';
-import { searchParcels } from '@/lib/lookup/arcgis';
+import { COUNTY_SOURCES } from '@/lib/lookup/counties';
 
-const mockSearch = vi.mocked(searchParcels);
+const mockSearch = vi.mocked(COUNTY_SOURCES.hamilton.search);
 
 function req(body: unknown) {
   return new Request('http://localhost/api/lookup', {

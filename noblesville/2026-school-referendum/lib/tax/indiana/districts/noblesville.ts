@@ -36,14 +36,23 @@ export const NOBLESVILLE: DistrictReferendumConfig = {
       value: 2032, source: SOURCES.districtReferendumPage, status: 'confirmed',
       note: 'Final levy year for the 2010 referendum debt.',
     },
+    explainer:
+      'Noblesville Schools’ 2026 question replaces its current operating referendum ($0.37) with a new operating rate of up to $0.57 (the district has publicly committed to $0.41 for 2027). A separate referendum debt rate ($0.08, levied through 2032) stays on your bill either way — it is not part of this vote.',
   },
-  gisGate: /noblesville/i,
-  /** Certified pay-2026 total district rates (DLGF budget order). Match patterns are tested against ArcGIS TAXDISTNAM. */
+  // Gate admits every Noblesville-Schools taxing district. Note "Nob Wayne" is
+  // abbreviated in the GIS layer and does NOT contain "noblesville".
+  gisGate: /noblesville|nob\s+wayne/i,
+  /**
+   * Certified pay-2026 total district rates (county rate sheet). `match` is tested
+   * against the live ArcGIS TAXDISTNAM value (verified against the parcel service),
+   * NOT the DLGF rate-sheet label — the two differ (e.g. GIS "Noblesville SE" is the
+   * Delaware Township portion; GIS "Noblesville FC" is Fall Creek; GIS "Nob Wayne").
+   */
   taxDistricts: [
-    { name: 'Noblesville–Fall Creek', match: /fall\s*creek/i, totalRate2026: 2.4503 },
-    { name: 'Noblesville–Delaware', match: /delaware/i, totalRate2026: 2.4813 },
-    { name: 'Noblesville–Wayne', match: /wayne/i, totalRate2026: 2.4737 },
-    { name: 'Noblesville City', match: /city/i, totalRate2026: 2.5549 },
-    { name: 'Noblesville Township', match: /township|twp/i, totalRate2026: 1.8444 },
+    { name: 'Noblesville–Fall Creek', match: /noblesville\s+fc/i, totalRate2026: 2.4503 },
+    { name: 'Noblesville–Delaware', match: /noblesville\s+se/i, totalRate2026: 2.4813 },
+    { name: 'Noblesville–Wayne', match: /nob\s+wayne/i, totalRate2026: 2.4737 },
+    { name: 'Noblesville City', match: /noblesville\s+city/i, totalRate2026: 2.5549 },
+    { name: 'Noblesville Township', match: /noblesville\s+twp/i, totalRate2026: 1.8444 },
   ],
 };

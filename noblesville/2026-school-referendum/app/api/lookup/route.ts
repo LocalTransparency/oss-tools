@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { sanitizeSearchTerm, searchParcels } from '@/lib/lookup/arcgis';
+import { sanitizeSearchTerm } from '@/lib/lookup/arcgis';
+import { COUNTY_SOURCES } from '@/lib/lookup/counties';
 import { getCached, setCached } from '@/lib/lookup/cache';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const candidates = await searchParcels(term);
+    const candidates = await COUNTY_SOURCES.hamilton.search(term);
     setCached(term, candidates);
     return NextResponse.json({ candidates });
   } catch {

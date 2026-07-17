@@ -45,12 +45,13 @@ describe('normalizeStreetSuffixes', () => {
 });
 
 describe('buildQueryUrl', () => {
-  it('targets the county FeatureServer with a LIKE clause and Noblesville district filter', () => {
+  it('targets the county FeatureServer with an address-only LIKE clause', () => {
     const url = new URL(buildQueryUrl('1234 CONNER ST'));
     expect(url.hostname).toBe('services5.arcgis.com');
     const where = url.searchParams.get('where')!;
     expect(where).toContain("LIKE '%1234 CONNER ST%'");
-    expect(where).toContain("TAXDISTNAM) LIKE '%NOBLESVILLE%'");
+    expect(where).not.toContain('TAXDISTNAM'); // county-wide now — no school-district filter
+    expect(where.match(/'/g)).toHaveLength(2); // one address pattern, two delimiting quotes
     expect(url.searchParams.get('resultRecordCount')).toBe('10');
     expect(url.searchParams.get('returnGeometry')).toBe('false');
   });
@@ -58,13 +59,14 @@ describe('buildQueryUrl', () => {
     const url = new URL(buildQueryUrl('1234 CONNER STREET', '1234 CONNER ST'));
     const where = url.searchParams.get('where')!;
     expect(where).toContain("(UPPER(LOCADDRESS) LIKE '%1234 CONNER STREET%' OR UPPER(LOCADDRESS) LIKE '%1234 CONNER ST%')");
-    expect(where).toContain("TAXDISTNAM) LIKE '%NOBLESVILLE%'");
+    expect(where).not.toContain('TAXDISTNAM');
+    expect(where.match(/'/g)).toHaveLength(4);
   });
   it('keeps the single-condition clause when the normalized term is identical', () => {
     const url = new URL(buildQueryUrl('1234 CONNER ST', '1234 CONNER ST'));
     const where = url.searchParams.get('where')!;
     expect(where.match(/LOCADDRESS/g)).toHaveLength(1);
-    expect(where.match(/'/g)).toHaveLength(4);
+    expect(where.match(/'/g)).toHaveLength(2);
   });
 });
 
@@ -118,7 +120,7 @@ describe('searchParcels', () => {
     // The only single quotes allowed are the four that delimit the two LIKE
     // patterns; none of the caller's quotes may survive into the clause.
     expect(where).toContain("LIKE '%123 OR 11-- MAIN ST%'");
-    expect(where.match(/'/g)).toHaveLength(4);
+    expect(where.match(/'/g)).toHaveLength(2);
   });
   it('queries both the raw term and the suffix-normalized term when they differ', async () => {
     const fetchMock = vi
@@ -130,8 +132,8 @@ describe('searchParcels', () => {
     const where = calledUrl.searchParams.get('where')!;
     expect(where).toContain("LIKE '%1234 CONNER STREET%'");
     expect(where).toContain("LIKE '%1234 CONNER ST%'");
-    // Two LOCADDRESS LIKE patterns + the district filter = 6 delimiting quotes.
-    expect(where.match(/'/g)).toHaveLength(6);
+    // Two LOCADDRESS LIKE patterns = 4 delimiting quotes.
+    expect(where.match(/'/g)).toHaveLength(4);
   });
   it('keeps a single LOCADDRESS condition when normalization is a no-op', async () => {
     const fetchMock = vi
@@ -142,7 +144,7 @@ describe('searchParcels', () => {
     const calledUrl = new URL(String(fetchMock.mock.calls[0][0]));
     const where = calledUrl.searchParams.get('where')!;
     expect(where.match(/LOCADDRESS/g)).toHaveLength(1);
-    expect(where.match(/'/g)).toHaveLength(4);
+    expect(where.match(/'/g)).toHaveLength(2);
   });
   it('sanitizes injection attempts even when the OR-variant clause is used', async () => {
     const fetchMock = vi
@@ -154,8 +156,8 @@ describe('searchParcels', () => {
     const where = calledUrl.searchParams.get('where')!;
     expect(where).toContain("LIKE '%123 OR 11-- MAIN STREET%'");
     expect(where).toContain("LIKE '%123 OR 11-- MAIN ST%'");
-    // The only single quotes allowed are the six that delimit the three LIKE
+    // The only single quotes allowed are the four that delimit the two LIKE
     // patterns; none of the caller's quotes may survive into the clause.
-    expect(where.match(/'/g)).toHaveLength(6);
+    expect(where.match(/'/g)).toHaveLength(4);
   });
 });

@@ -25,6 +25,7 @@ describe('<Calculator>', () => {
     await user.click(screen.getByRole('button', { name: /look up/i }));
     await user.click(await screen.findByRole('button', { name: /1234 CONNER ST/i }));
     await waitFor(() => expect(screen.getByText('$4,015')).toBeInTheDocument());
+    expect(document.title).toMatch(/Noblesville Schools referendum/i);
   });
 
   it('falls back to manual entry on upstream failure', async () => {
@@ -69,13 +70,13 @@ describe('<Calculator>', () => {
     await user.type(screen.getByLabelText(/address/i), '1234 conner st');
     await user.click(screen.getByRole('button', { name: /look up/i }));
     await user.click(await screen.findByRole('button', { name: /1234 CONNER ST/i }));
-    expect(await screen.findByText(/covers homes in the Noblesville Schools district/i)).toBeInTheDocument();
+    expect(await screen.findByText(/in a school district this tool covers yet/i)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /enter assessed value manually/i }));
     await user.type(screen.getByLabelText(/gross assessed value/i), '0');
     await user.click(screen.getByRole('button', { name: /calculate/i }));
     expect(await screen.findByText(/between \$1 and \$50,000,000/i)).toBeInTheDocument();
-    expect(screen.queryByText(/covers homes in the Noblesville Schools district/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/in a school district this tool covers yet/i)).not.toBeInTheDocument();
   });
 
   it('shows out-of-district message for unmatched districts', async () => {
@@ -87,6 +88,6 @@ describe('<Calculator>', () => {
     await user.type(screen.getByLabelText(/address/i), '1234 conner st');
     await user.click(screen.getByRole('button', { name: /look up/i }));
     await user.click(await screen.findByRole('button', { name: /1234 CONNER ST/i }));
-    expect(await screen.findByText(/covers homes in the Noblesville Schools district/i)).toBeInTheDocument();
+    expect(await screen.findByText(/in a school district this tool covers yet/i)).toBeInTheDocument();
   });
 });
