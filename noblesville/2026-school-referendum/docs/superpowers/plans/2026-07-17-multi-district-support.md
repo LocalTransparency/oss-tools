@@ -764,12 +764,13 @@ git commit -m "feat(ui): Results takes a district config prop and names the dist
 
 **Files:**
 - Modify: `components/Calculator.tsx`
+- Test: `components/Calculator.test.tsx` (update 3 out-of-district assertions to the new uncovered copy)
 
 **Interfaces:**
 - Consumes: `resolveTaxDistrict` from `@/lib/tax/indiana/districts/resolve`; `nameUncoveredDistrict` from `@/lib/tax/indiana/counties/hamilton`; `NOBLESVILLE` from `@/lib/tax/indiana/districts/noblesville` (manual path only); `ParcelCandidate` from `@/lib/lookup/arcgis`; `DistrictReferendumConfig`, `TaxDistrict` from `@/lib/tax/types`; `Results` (Task 5).
 - Produces: no new exports; wires resolution into the existing lookup/manual flow.
 
-There are no component tests for `Calculator` today; this task is verified by typecheck, the existing suite staying green, and a manual smoke in Task 7's verification. Keep changes minimal and mechanical.
+`components/Calculator.test.tsx` exists (6 tests) and must be updated: it currently renders `<Results>` indirectly (so it already fails after Task 5 until this task passes `config`), and two of its tests assert the OLD out-of-district copy (`/covers homes in the Noblesville Schools district/i`) that this task replaces. Those tests use a `Wayne Township` `taxDistrictName`, which does not match Noblesville's `gisGate` (`/noblesville/i`), so `resolveTaxDistrict` returns null and `nameUncoveredDistrict` returns null → the new **generic** uncovered message renders. Keep changes minimal and mechanical.
 
 - [ ] **Step 1: Update imports and the `Selection` type**
 
@@ -895,15 +896,39 @@ Replace the two `Results` render blocks (lines 149–161) so they pass `config` 
       )}
 ```
 
-- [ ] **Step 6: Typecheck and run the full suite**
+- [ ] **Step 6: Update `components/Calculator.test.tsx` to the new uncovered copy**
+
+Three assertions reference the old out-of-district message and must be retargeted to the new generic uncovered copy. Use a stable substring that avoids apostrophes: `/in a school district this tool covers yet/i`.
+
+In the test `'clears the out-of-district message when manual entry fails validation'`, replace both occurrences:
+
+```tsx
+    expect(await screen.findByText(/in a school district this tool covers yet/i)).toBeInTheDocument();
+```
+
+and, after the failed manual validation:
+
+```tsx
+    expect(screen.queryByText(/in a school district this tool covers yet/i)).not.toBeInTheDocument();
+```
+
+In the test `'shows out-of-district message for unmatched districts'`, replace its assertion:
+
+```tsx
+    expect(await screen.findByText(/in a school district this tool covers yet/i)).toBeInTheDocument();
+```
+
+Leave the other four Calculator tests unchanged — the `searches, picks a candidate, shows results` and `manual entry computes results` tests still expect `$4,015` (the Noblesville City parcel resolves and manual entry stays Noblesville-scoped), and the upstream-failure / too-short tests are unaffected.
+
+- [ ] **Step 7: Typecheck and run the full suite**
 
 Run: `npx tsc --noEmit && npm test`
-Expected: clean typecheck; all tests pass (79 prior + new tests from Tasks 1–5).
+Expected: clean typecheck; all tests pass (the 2 `Calculator.test.tsx` failures introduced by Task 5's prop change are resolved here, and the 3 retargeted assertions match the new copy).
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add components/Calculator.tsx
+git add components/Calculator.tsx components/Calculator.test.tsx
 git commit -m "feat(ui): resolve district from address and show covered/uncovered states"
 ```
 
