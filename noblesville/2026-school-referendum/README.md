@@ -59,7 +59,10 @@ Indiana school-district referendum is a data change, not a code change.
    message. `resolveTaxDistrict` then matches parcels to the config automatically.
 5. A new **county** needs a `CountyLookupSource` adapter under
    `lib/lookup/counties/` plus one entry in `lib/lookup/counties/index.ts`
-   (`COUNTY_SOURCES`). Existing counties need no lookup changes.
+   (`COUNTY_SOURCES`). Existing counties need no lookup changes. Address→county
+   routing is still future work — today the API route consumes
+   `COUNTY_SOURCES.hamilton` directly, so a second county also needs that
+   routing wired in.
 
 `buildScenarios`, `computeAllScenarios`, `findDistrict`, and `computeBill` all
 take the config as a parameter, so no engine or scenario code needs to change.

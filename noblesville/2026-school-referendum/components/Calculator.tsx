@@ -13,6 +13,10 @@ type Selection =
   | { kind: 'parcel'; parcel: ParcelCandidate; config: DistrictReferendumConfig; district: TaxDistrict }
   | { kind: 'manual'; grossAV: number; config: DistrictReferendumConfig; district: TaxDistrict };
 
+// Mirrors app/layout.tsx's metadata.title verbatim, so the tab restores to the
+// site's normal title once a selection is cleared (e.g. an uncovered parcel).
+const DEFAULT_TITLE = 'Noblesville Referendum Tax Estimator';
+
 export default function Calculator() {
   const [query, setQuery] = useState('');
   const [candidates, setCandidates] = useState<ParcelCandidate[] | null>(null);
@@ -27,9 +31,9 @@ export default function Calculator() {
   const [uncovered, setUncovered] = useState<{ name: string | null } | null>(null);
 
   useEffect(() => {
-    if (selection) {
-      document.title = `${selection.config.name} referendum — property tax estimate`;
-    }
+    document.title = selection
+      ? `${selection.config.name} referendum — property tax estimate`
+      : DEFAULT_TITLE;
   }, [selection]);
 
   async function lookup(e: React.FormEvent) {

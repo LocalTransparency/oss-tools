@@ -26,7 +26,11 @@ export function buildScenarios(config: DistrictReferendumConfig): Record<Scenari
     },
     passCommitted: {
       id: 'passCommitted',
-      label: `If it passes — committed 2027 rate ($${committedRate.toFixed(2)})`,
+      // "committed 2027 rate" only when the district actually published a commitment;
+      // otherwise committedRate === proposedMax, so label it as the authorized maximum.
+      label: config.referendum.committed2027
+        ? `If it passes — committed 2027 rate ($${committedRate.toFixed(2)})`
+        : `If it passes — authorized maximum ($${committedRate.toFixed(2)})`,
       payYear: 2027,
       standardDeduction: DEDUCTIONS[2027].value.standard,
       supplementalRate: DEDUCTIONS[2027].value.supplementalRate,

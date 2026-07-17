@@ -48,7 +48,7 @@ describe('buildScenarios', () => {
     expect(scenarios.passMax.referendumOperatingRate).toBe(0.25);
 
     // labels reflect the actual value used
-    expect(scenarios.passCommitted.label).toBe('If it passes — committed 2027 rate ($0.25)');
+    expect(scenarios.passCommitted.label).toBe('If it passes — authorized maximum ($0.25)');
     expect(scenarios.passMax.label).toBe('If it passes — authorized maximum ($0.25)');
   });
 });

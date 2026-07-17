@@ -75,5 +75,6 @@ describe('<Results>', () => {
     expect(screen.getByRole('heading', { name: /Estimated property taxes.*Minimal Schools/i })).toBeInTheDocument();
     expect(screen.queryByText(/referendum debt tax/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/public commitment for 2027 only/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/committed 2027 rate/i)).not.toBeInTheDocument();
   });
 });
