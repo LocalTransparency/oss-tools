@@ -52,6 +52,14 @@ Indiana school-district referendum is a data change, not a code change.
    `https://` URL), `status`, and an optional `note`. No placeholder or fake
    district data ships in this codebase.
 3. Register it in `lib/tax/indiana/districts/index.ts`'s `DISTRICTS` map.
+4. Add a **verified** roster entry for the district in its county file
+   (`lib/tax/indiana/counties/<county>.ts`) with a `configId` linking it to the
+   config. Only add the entry once its `TAXDISTNAM` pattern is confirmed against
+   real county parcels — a wrong name is worse than the generic "not covered"
+   message. `resolveTaxDistrict` then matches parcels to the config automatically.
+5. A new **county** needs a `CountyLookupSource` adapter under
+   `lib/lookup/counties/` plus one entry in `lib/lookup/counties/index.ts`
+   (`COUNTY_SOURCES`). Existing counties need no lookup changes.
 
 `buildScenarios`, `computeAllScenarios`, `findDistrict`, and `computeBill` all
 take the config as a parameter, so no engine or scenario code needs to change.
