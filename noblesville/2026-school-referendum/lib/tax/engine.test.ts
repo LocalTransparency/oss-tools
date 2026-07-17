@@ -33,7 +33,7 @@ describe('computeNetAV', () => {
 });
 
 const city = findDistrict(NOBLESVILLE, 'Noblesville City')!;
-const township = findDistrict(NOBLESVILLE, 'Noblesville Township')!;
+const township = findDistrict(NOBLESVILLE, 'Noblesville Twp')!;
 
 describe('computeBill — anchored to official figures', () => {
   it('reproduces the pay-2026 worked example: $350k Noblesville City homestead ≈ $4,015.40', () => {

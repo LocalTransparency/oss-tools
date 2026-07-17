@@ -37,13 +37,20 @@ export const NOBLESVILLE: DistrictReferendumConfig = {
       note: 'Final levy year for the 2010 referendum debt.',
     },
   },
-  gisGate: /noblesville/i,
-  /** Certified pay-2026 total district rates (DLGF budget order). Match patterns are tested against ArcGIS TAXDISTNAM. */
+  // Gate admits every Noblesville-Schools taxing district. Note "Nob Wayne" is
+  // abbreviated in the GIS layer and does NOT contain "noblesville".
+  gisGate: /noblesville|nob\s+wayne/i,
+  /**
+   * Certified pay-2026 total district rates (county rate sheet). `match` is tested
+   * against the live ArcGIS TAXDISTNAM value (verified against the parcel service),
+   * NOT the DLGF rate-sheet label — the two differ (e.g. GIS "Noblesville SE" is the
+   * Delaware Township portion; GIS "Noblesville FC" is Fall Creek; GIS "Nob Wayne").
+   */
   taxDistricts: [
-    { name: 'Noblesville–Fall Creek', match: /fall\s*creek/i, totalRate2026: 2.4503 },
-    { name: 'Noblesville–Delaware', match: /delaware/i, totalRate2026: 2.4813 },
-    { name: 'Noblesville–Wayne', match: /wayne/i, totalRate2026: 2.4737 },
-    { name: 'Noblesville City', match: /city/i, totalRate2026: 2.5549 },
-    { name: 'Noblesville Township', match: /township|twp/i, totalRate2026: 1.8444 },
+    { name: 'Noblesville–Fall Creek', match: /noblesville\s+fc/i, totalRate2026: 2.4503 },
+    { name: 'Noblesville–Delaware', match: /noblesville\s+se/i, totalRate2026: 2.4813 },
+    { name: 'Noblesville–Wayne', match: /nob\s+wayne/i, totalRate2026: 2.4737 },
+    { name: 'Noblesville City', match: /noblesville\s+city/i, totalRate2026: 2.5549 },
+    { name: 'Noblesville Township', match: /noblesville\s+twp/i, totalRate2026: 1.8444 },
   ],
 };

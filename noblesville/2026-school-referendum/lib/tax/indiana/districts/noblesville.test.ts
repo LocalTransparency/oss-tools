@@ -17,13 +17,21 @@ describe('Noblesville district data integrity', () => {
     expect(currentReferendumTotal(NOBLESVILLE)).toBeCloseTo(0.45, 4);
   });
 
-  it('matches district name variants from GIS', () => {
-    expect(findDistrict(NOBLESVILLE, '11 - Noblesville City')?.name).toBe('Noblesville City');
-    expect(findDistrict(NOBLESVILLE, 'NOBLESVILLE TOWNSHIP')?.name).toBe('Noblesville Township');
-    expect(findDistrict(NOBLESVILLE, 'Noblesville Fall Creek')?.name).toBe('Noblesville–Fall Creek');
-    expect(findDistrict(NOBLESVILLE, 'Noblesville Wayne')?.name).toBe('Noblesville–Wayne');
-    expect(findDistrict(NOBLESVILLE, 'Noblesville Delaware')?.name).toBe('Noblesville–Delaware');
+  // Inputs are the REAL ArcGIS TAXDISTNAM strings (verified against the live parcel
+  // service), not fabricated labels — this is what a real address lookup returns.
+  it('matches the real GIS TAXDISTNAM for every Noblesville taxing district', () => {
+    expect(findDistrict(NOBLESVILLE, 'Noblesville City')?.name).toBe('Noblesville City');
+    expect(findDistrict(NOBLESVILLE, 'Noblesville Twp')?.name).toBe('Noblesville Township');
+    expect(findDistrict(NOBLESVILLE, 'Noblesville FC')?.name).toBe('Noblesville–Fall Creek');
+    expect(findDistrict(NOBLESVILLE, 'Nob Wayne')?.name).toBe('Noblesville–Wayne');
+    expect(findDistrict(NOBLESVILLE, 'Noblesville SE')?.name).toBe('Noblesville–Delaware');
+  });
+
+  it('does not match non-Noblesville districts (incl. the HSE side of split townships)', () => {
     expect(findDistrict(NOBLESVILLE, 'Carmel City')).toBeNull();
+    expect(findDistrict(NOBLESVILLE, 'Fishers')).toBeNull();
+    expect(findDistrict(NOBLESVILLE, 'Delaware')).toBeNull(); // bare "Delaware" is the HSE portion
+    expect(findDistrict(NOBLESVILLE, 'Fall Creek')).toBeNull(); // bare "Fall Creek" is the HSE portion
   });
 
   it('every sourced referendum value cites an http source', () => {

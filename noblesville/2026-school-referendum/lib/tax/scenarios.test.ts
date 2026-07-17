@@ -5,7 +5,7 @@ import { NOBLESVILLE } from './indiana/districts/noblesville';
 import type { DistrictReferendumConfig } from './types';
 
 const city = findDistrict(NOBLESVILLE, 'Noblesville City')!;
-const township = findDistrict(NOBLESVILLE, 'Noblesville Township')!;
+const township = findDistrict(NOBLESVILLE, 'Noblesville Twp')!;
 
 describe('buildScenarios', () => {
   it('scenario parameters match the spec for Noblesville', () => {
