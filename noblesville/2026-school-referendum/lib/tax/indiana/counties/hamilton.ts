@@ -16,7 +16,16 @@ export interface CountySchoolDistrict {
 export const HAMILTON = {
   name: 'Hamilton',
   schoolDistricts: [
-    { name: 'Noblesville Schools', gisGate: /noblesville/i, configId: 'noblesville' },
+    // Covered — full referendum data (gisGate mirrors the config's, for parity).
+    { name: 'Noblesville Schools', gisGate: /noblesville|nob\s+wayne/i, configId: 'noblesville' },
+    { name: 'Hamilton Southeastern Schools', gisGate: /fishers|^delaware$|^fall\s*creek$/i, configId: 'hamilton-southeastern' },
+    { name: 'Carmel Clay Schools', gisGate: /carmel/i, configId: 'carmel-clay' },
+    { name: 'Westfield Washington Schools', gisGate: /westfield/i, configId: 'westfield-washington' },
+    { name: 'Sheridan Community Schools', gisGate: /sheridan/i, configId: 'sheridan' },
+    // Uncovered — no 2026 referendum, but named so its residents get a specific
+    // (not generic) "not covered" message. Its northern-Hamilton towns are
+    // unambiguous; no configId because there's no referendum to model.
+    { name: 'Hamilton Heights School Corporation', gisGate: /arcadia|cicero|atlanta|jackson/i },
   ] as CountySchoolDistrict[],
 };
 

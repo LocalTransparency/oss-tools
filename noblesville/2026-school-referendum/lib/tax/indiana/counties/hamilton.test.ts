@@ -13,12 +13,16 @@ describe('Hamilton county roster', () => {
     }
   });
 
-  it('names a verified district from its TAXDISTNAM', () => {
-    expect(nameUncoveredDistrict('11 - Noblesville City')).toBe('Noblesville Schools');
+  it('names verified districts from their TAXDISTNAM', () => {
+    expect(nameUncoveredDistrict('Noblesville City')).toBe('Noblesville Schools');
+    expect(nameUncoveredDistrict('Fishers')).toBe('Hamilton Southeastern Schools');
+    expect(nameUncoveredDistrict('Carmel')).toBe('Carmel Clay Schools');
+    // Hamilton Heights is uncovered (no referendum) but still named:
+    expect(nameUncoveredDistrict('Arcadia')).toBe('Hamilton Heights School Corporation');
   });
 
-  it('returns null for an unverified/unknown district (generic fallback)', () => {
-    expect(nameUncoveredDistrict('Clay Township')).toBeNull();
-    expect(nameUncoveredDistrict('Carmel City')).toBeNull();
+  it('returns null for a truly unknown/unresolved district (generic fallback)', () => {
+    expect(nameUncoveredDistrict('White River')).toBeNull(); // intentionally omitted (unresolved)
+    expect(nameUncoveredDistrict('Somewhere Else')).toBeNull();
   });
 });

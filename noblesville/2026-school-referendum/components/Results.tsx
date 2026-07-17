@@ -71,6 +71,18 @@ export default function Results({
         </p>
       </header>
 
+      {REFERENDUM.explainer && (
+        <div className="rounded-md border border-border bg-surface-2 p-4 text-sm">
+          <h3 className="mb-1 font-medium">What this referendum does</h3>
+          <p>
+            {REFERENDUM.explainer}{' '}
+            <a className="text-accent underline" href={REFERENDUM.proposedMax.source}>
+              Read the DLGF determination
+            </a>.
+          </p>
+        </div>
+      )}
+
       {!homestead && (
         <p className="rounded-md border border-warning-border bg-warning-bg p-3 text-sm text-warning-fg">
           County records do not show a homestead deduction for this parcel. This estimate

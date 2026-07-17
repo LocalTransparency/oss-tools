@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import Results from './Results';
 import { findDistrict } from '@/lib/tax/engine';
 import { NOBLESVILLE } from '@/lib/tax/indiana/districts/noblesville';
+import { CARMEL_CLAY } from '@/lib/tax/indiana/districts/carmel-clay';
 import type { DistrictReferendumConfig } from '@/lib/tax/types';
 
 const city = findDistrict(NOBLESVILLE, 'Noblesville City')!;
@@ -52,6 +53,29 @@ describe('<Results>', () => {
     expect(screen.getByText(/how this was calculated/i)).toBeInTheDocument();
     expect(screen.getAllByText(/\$181,200/).length).toBeGreaterThan(0); // pay-2026 net AV
     expect(screen.getAllByText(/\$167,400/).length).toBeGreaterThan(0); // pay-2027 net AV
+  });
+
+  it('shows the district-specific "what this referendum does" explainer with a determination link', () => {
+    renderCity();
+    expect(screen.getByRole('heading', { name: /what this referendum does/i })).toBeInTheDocument();
+    expect(screen.getByText(/separate referendum debt rate .* stays on your bill/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /read the dlgf determination/i })).toBeInTheDocument();
+  });
+
+  it('explains Carmel Clay’s full repeal-and-replace of both referendums', () => {
+    const carmelCarmel = findDistrict(CARMEL_CLAY, 'Carmel')!;
+    render(
+      <Results
+        config={CARMEL_CLAY}
+        addressLabel="1 Main St"
+        grossAV={500000}
+        district={carmelCarmel}
+        homestead={true}
+        assessmentYear={2026}
+        propertyReportUrl={null}
+      />,
+    );
+    expect(screen.getByText(/repeals and replaces BOTH of its current referendums/i)).toBeInTheDocument();
   });
 
   it('renders a minimal config (no debt, no committed2027) without crashing or a debt row', () => {

@@ -36,6 +36,8 @@ export const NOBLESVILLE: DistrictReferendumConfig = {
       value: 2032, source: SOURCES.districtReferendumPage, status: 'confirmed',
       note: 'Final levy year for the 2010 referendum debt.',
     },
+    explainer:
+      'Noblesville Schools’ 2026 question replaces its current operating referendum ($0.37) with a new operating rate of up to $0.57 (the district has publicly committed to $0.41 for 2027). A separate referendum debt rate ($0.08, levied through 2032) stays on your bill either way — it is not part of this vote.',
   },
   // Gate admits every Noblesville-Schools taxing district. Note "Nob Wayne" is
   // abbreviated in the GIS layer and does NOT contain "noblesville".
