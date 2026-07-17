@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ParcelCandidate } from '@/lib/lookup/arcgis';
 import { resolveTaxDistrict } from '@/lib/tax/indiana/districts/resolve';
 import { nameUncoveredDistrict } from '@/lib/tax/indiana/counties/hamilton';
@@ -25,6 +25,12 @@ export default function Calculator() {
   // null = covered/none; { name } = uncovered (name is the district name when
   // verified, or null for the generic "not covered" message).
   const [uncovered, setUncovered] = useState<{ name: string | null } | null>(null);
+
+  useEffect(() => {
+    if (selection) {
+      document.title = `${selection.config.name} referendum — property tax estimate`;
+    }
+  }, [selection]);
 
   async function lookup(e: React.FormEvent) {
     e.preventDefault();
@@ -63,7 +69,6 @@ export default function Calculator() {
     }
     setUncovered(null);
     setSelection({ kind: 'parcel', parcel, config: resolved.config, district: resolved.district });
-    document.title = `${resolved.config.name} referendum — property tax estimate`;
   }
 
   function calculateManual(e: React.FormEvent) {

@@ -25,6 +25,7 @@ describe('<Calculator>', () => {
     await user.click(screen.getByRole('button', { name: /look up/i }));
     await user.click(await screen.findByRole('button', { name: /1234 CONNER ST/i }));
     await waitFor(() => expect(screen.getByText('$4,015')).toBeInTheDocument());
+    expect(document.title).toMatch(/Noblesville Schools referendum/i);
   });
 
   it('falls back to manual entry on upstream failure', async () => {
