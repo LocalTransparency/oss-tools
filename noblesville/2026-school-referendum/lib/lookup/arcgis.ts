@@ -68,14 +68,16 @@ export function normalizeStreetSuffixes(term: string): string {
  * When a suffix-normalized variant of the term is provided and differs from
  * the raw term, match EITHER variant, so input typed exactly as the county
  * stores it can never do worse than a plain substring search.
+ *
+ * The Hamilton County FeatureServer is already scoped to Hamilton County, so
+ * no school-district filter is applied here — district resolution happens
+ * after lookup, per candidate (see resolveTaxDistrict).
  */
 export function buildQueryUrl(term: string, normalizedTerm: string = term): string {
-  const addressClause =
+  const where =
     normalizedTerm !== term
       ? `(UPPER(LOCADDRESS) LIKE '%${term}%' OR UPPER(LOCADDRESS) LIKE '%${normalizedTerm}%')`
       : `UPPER(LOCADDRESS) LIKE '%${term}%'`;
-  const where =
-    `${addressClause} AND UPPER(TAXDISTNAM) LIKE '%NOBLESVILLE%'`;
   const params = new URLSearchParams({
     where,
     outFields: OUT_FIELDS,
