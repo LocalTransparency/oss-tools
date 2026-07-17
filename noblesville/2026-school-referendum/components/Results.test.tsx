@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import Results from './Results';
-import { findDistrict } from '@/lib/tax/assumptions';
+import { findDistrict } from '@/lib/tax/engine';
+import { NOBLESVILLE } from '@/lib/tax/indiana/districts/noblesville';
 
-const city = findDistrict('Noblesville City')!;
+const city = findDistrict(NOBLESVILLE, 'Noblesville City')!;
 
 describe('<Results>', () => {
   it('renders all three scenario totals for a $350k city homestead', () => {

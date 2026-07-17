@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import type { ParcelCandidate } from '@/lib/lookup/arcgis';
-import { DISTRICTS, findDistrict } from '@/lib/tax/assumptions';
+import { findDistrict } from '@/lib/tax/engine';
+import { NOBLESVILLE } from '@/lib/tax/indiana/districts/noblesville';
 import type { TaxDistrict } from '@/lib/tax/types';
 import { fmtDollars } from '@/lib/format';
 import Results from './Results';
@@ -19,7 +20,7 @@ export default function Calculator() {
   const [busy, setBusy] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualAV, setManualAV] = useState('');
-  const [manualDistrict, setManualDistrict] = useState(DISTRICTS[3].name); // Noblesville City
+  const [manualDistrict, setManualDistrict] = useState(NOBLESVILLE.taxDistricts[3].name); // Noblesville City
   const [outOfDistrict, setOutOfDistrict] = useState(false);
 
   async function lookup(e: React.FormEvent) {
@@ -51,7 +52,7 @@ export default function Calculator() {
   }
 
   function select(parcel: ParcelCandidate) {
-    const district = findDistrict(parcel.taxDistrictName);
+    const district = findDistrict(NOBLESVILLE, parcel.taxDistrictName);
     if (!district) { setOutOfDistrict(true); setSelection(null); return; }
     setOutOfDistrict(false);
     setSelection({ kind: 'parcel', parcel, district });
@@ -60,7 +61,7 @@ export default function Calculator() {
   function calculateManual(e: React.FormEvent) {
     e.preventDefault();
     const grossAV = Number(manualAV.replace(/[,$\s]/g, ''));
-    const district = DISTRICTS.find((d) => d.name === manualDistrict);
+    const district = NOBLESVILLE.taxDistricts.find((d) => d.name === manualDistrict);
     if (!Number.isFinite(grossAV) || grossAV <= 0 || grossAV > 50_000_000 || !district) {
       setError('Enter a gross assessed value between $1 and $50,000,000.');
       setOutOfDistrict(false); setSelection(null);
@@ -106,7 +107,7 @@ export default function Calculator() {
           <label htmlFor="manual-district" className="block font-medium">Taxing district</label>
           <select id="manual-district" className="w-full rounded-md border border-border bg-surface p-2"
             value={manualDistrict} onChange={(e) => setManualDistrict(e.target.value)}>
-            {DISTRICTS.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
+            {NOBLESVILLE.taxDistricts.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
           </select>
           <p className="text-xs text-muted">
             Inside Noblesville city limits, choose Noblesville City. Not sure? Your taxing district is

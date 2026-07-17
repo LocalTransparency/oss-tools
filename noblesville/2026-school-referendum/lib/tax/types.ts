@@ -1,3 +1,10 @@
+export interface Sourced<T> {
+  value: T;
+  source: string;
+  status: 'confirmed' | 'estimated' | 'public-commitment';
+  note?: string;
+}
+
 export type ScenarioId = 'current' | 'passCommitted' | 'passMax' | 'fail';
 
 export interface ScenarioParams {
@@ -14,6 +21,23 @@ export interface TaxDistrict {
   name: string;
   match: RegExp;        // matched against ArcGIS TAXDISTNAM
   totalRate2026: number; // certified pay-2026 total, per $100
+}
+
+export interface DistrictReferendumConfig {
+  id: string;                           // 'noblesville'
+  name: string;                         // 'Noblesville Schools'
+  county: string;                       // 'Hamilton'
+  sources: Record<string, string>;      // district-specific URLs (DLGF determination,
+                                        //   county rate sheet, budget order, district page)
+  referendum: {
+    proposedMax: Sourced<number>;       // required — every ballot question has one
+    currentOperating?: Sourced<number>; // optional — existing operating referendum, if any
+    debt?: Sourced<number>;             // optional — existing referendum debt, if any
+    debtEndYear?: Sourced<number>;
+    committed2027?: Sourced<number>;    // optional — voluntary public commitment
+  };
+  gisGate: RegExp;                      // coarse filter on ArcGIS TAXDISTNAM, e.g. /noblesville/i
+  taxDistricts: TaxDistrict[];          // certified pay-2026 rates + match patterns
 }
 
 export interface BillBreakdown {

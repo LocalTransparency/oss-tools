@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { computeNetAV, computeBill } from './engine';
-import { SCENARIOS, findDistrict } from './assumptions';
+import { computeNetAV, computeBill, currentReferendumTotal, findDistrict, nonReferendumRate } from './engine';
+import { buildScenarios } from './scenarios';
+import { NOBLESVILLE } from './indiana/districts/noblesville';
+import type { DistrictReferendumConfig } from './types';
+
+const SCENARIOS = buildScenarios(NOBLESVILLE);
 
 describe('computeNetAV', () => {
   it('pay-2026: $350k home → (350000-48000) × (1-0.40) = 181,200', () => {
@@ -28,12 +32,12 @@ describe('computeNetAV', () => {
   });
 });
 
-const city = findDistrict('Noblesville City')!;
-const township = findDistrict('Noblesville Township')!;
+const city = findDistrict(NOBLESVILLE, 'Noblesville City')!;
+const township = findDistrict(NOBLESVILLE, 'Noblesville Township')!;
 
 describe('computeBill — anchored to official figures', () => {
   it('reproduces the pay-2026 worked example: $350k Noblesville City homestead ≈ $4,015.40', () => {
-    const b = computeBill(350000, city, SCENARIOS.current);
+    const b = computeBill(350000, city, SCENARIOS.current, NOBLESVILLE);
     expect(b.netAV).toBeCloseTo(181200, 2);
     expect(b.nonReferendumGross).toBeCloseTo(3814.08, 2);   // 181200 × 2.1049%
     expect(b.circuitBreakerCap).toBeCloseTo(3500, 2);        // 1% × 350000
@@ -45,20 +49,20 @@ describe('computeBill — anchored to official figures', () => {
   });
 
   it('reproduces the official ballot figure: $350k home at $0.57 max → referendum operating tax ≈ $954.18', () => {
-    const b = computeBill(350000, city, SCENARIOS.passMax);
+    const b = computeBill(350000, city, SCENARIOS.passMax, NOBLESVILLE);
     expect(b.referendumOperatingTax).toBeCloseTo(954.18, 2); // 167400 × 0.57%
     expect(b.total).toBeCloseTo(4288.1, 2);
   });
 
   it('pass at committed $0.41: $350k city home ≈ $4,020.26', () => {
-    const b = computeBill(350000, city, SCENARIOS.passCommitted);
+    const b = computeBill(350000, city, SCENARIOS.passCommitted, NOBLESVILLE);
     expect(b.nonReferendumNet).toBeCloseTo(3200, 2); // 3523.60 capped at 3500, minus $300 credit
     expect(b.referendumTax).toBeCloseTo(820.26, 2);  // 167400 × 0.49%
     expect(b.total).toBeCloseTo(4020.26, 2);
   });
 
   it('fail: $350k city home ≈ $3,333.92 — $0.08 debt rate still applies', () => {
-    const b = computeBill(350000, city, SCENARIOS.fail);
+    const b = computeBill(350000, city, SCENARIOS.fail, NOBLESVILLE);
     expect(b.referendumOperatingTax).toBe(0);
     expect(b.referendumDebtTax).toBeCloseTo(133.92, 2); // 167400 × 0.08%
     expect(b.total).toBeCloseTo(3333.92, 2);
@@ -67,7 +71,7 @@ describe('computeBill — anchored to official figures', () => {
 
 describe('computeBill — cap and credit boundaries', () => {
   it('high AV: 1% cap binds hard ($800k city, pay-2026)', () => {
-    const b = computeBill(800000, city, SCENARIOS.current);
+    const b = computeBill(800000, city, SCENARIOS.current, NOBLESVILLE);
     expect(b.nonReferendumGross).toBeCloseTo(9497.31, 2);
     expect(b.circuitBreakerCredit).toBeCloseTo(1497.31, 2);
     expect(b.supplementalHomesteadCredit).toBeCloseTo(300, 2);
@@ -75,20 +79,45 @@ describe('computeBill — cap and credit boundaries', () => {
   });
 
   it('township: cap does not bind, credit below $300 ($350k, pay-2026)', () => {
-    const b = computeBill(350000, township, SCENARIOS.current);
+    const b = computeBill(350000, township, SCENARIOS.current, NOBLESVILLE);
     expect(b.circuitBreakerCredit).toBe(0);                      // 2526.65 < 3500
     expect(b.supplementalHomesteadCredit).toBeCloseTo(252.67, 2); // 10% of 2526.65
     expect(b.total).toBeCloseTo(3089.39, 2);
   });
 
   it('zero net AV → zero everything', () => {
-    const b = computeBill(30000, city, SCENARIOS.current);
+    const b = computeBill(30000, city, SCENARIOS.current, NOBLESVILLE);
     expect(b.total).toBe(0);
     expect(b.supplementalHomesteadCredit).toBe(0);
   });
 
+  it('district with no existing referendum: missing rates default to 0 and the full certified rate is non-referendum', () => {
+    const sparse: DistrictReferendumConfig = {
+      id: 'sparse',
+      name: 'Sparse District',
+      county: 'Test',
+      sources: {},
+      referendum: {
+        proposedMax: { value: 0.25, source: 'https://example.com/ballot', status: 'confirmed' },
+      },
+      gisGate: /sparse/i,
+      taxDistricts: [{ name: 'Sparse Township', match: /township/i, totalRate2026: 2.0 }],
+    };
+    const district = sparse.taxDistricts[0];
+    expect(currentReferendumTotal(sparse)).toBe(0);
+    expect(nonReferendumRate(sparse, district)).toBe(2.0);
+
+    const scenarios = buildScenarios(sparse);
+    const b = computeBill(350000, district, scenarios.current, sparse);
+    // pay-2026 net AV 181,200 at the full 2.0 rate, capped at 1% of gross, minus $300 credit
+    expect(b.nonReferendumGross).toBeCloseTo(3624, 2);   // 181200 × 2.0%
+    expect(b.circuitBreakerCredit).toBeCloseTo(124, 2);  // capped at 3500
+    expect(b.referendumTax).toBe(0);
+    expect(b.total).toBeCloseTo(3200, 2);                // 3500 − 300
+  });
+
   it('referendum tax is excluded from both the cap and the credit base', () => {
-    const b = computeBill(800000, city, SCENARIOS.passMax);
+    const b = computeBill(800000, city, SCENARIOS.passMax, NOBLESVILLE);
     // cap applies to non-referendum only:
     expect(b.nonReferendumGross - b.circuitBreakerCredit).toBeCloseTo(8000, 2);
     // referendum stacks on top, uncapped:

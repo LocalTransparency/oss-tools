@@ -1,14 +1,14 @@
 import type { BillBreakdown, TaxDistrict } from '@/lib/tax/types';
-import { computeAllScenarios } from '@/lib/tax/scenarios';
-import {
-  CIRCUIT_BREAKER_RATE,
-  HOMESTEAD_CREDIT,
-  REFERENDUM,
-  REFERENDUM_DEBT_END_YEAR,
-  SCENARIOS,
-  SOURCES,
-} from '@/lib/tax/assumptions';
+import { buildScenarios, computeAllScenarios } from '@/lib/tax/scenarios';
+import { CIRCUIT_BREAKER_RATE, HOMESTEAD_CREDIT } from '@/lib/tax/indiana/assumptions';
+import { NOBLESVILLE } from '@/lib/tax/indiana/districts/noblesville';
 import { fmtCents, fmtDelta, fmtDollars } from '@/lib/format';
+
+const REFERENDUM = NOBLESVILLE.referendum;
+const SOURCES = NOBLESVILLE.sources;
+const SCENARIOS = buildScenarios(NOBLESVILLE);
+const REFERENDUM_DEBT_END_YEAR = REFERENDUM.debtEndYear!;
+const COMMITTED_2027 = REFERENDUM.committed2027!;
 
 interface Props {
   grossAV: number;
@@ -30,7 +30,7 @@ function MathRows({ b }: { b: BillBreakdown }) {
     [`− Supplemental homestead credit (${HOMESTEAD_CREDIT.value.rate * 100}%, max $${HOMESTEAD_CREDIT.value.max})`, fmtCents(b.supplementalHomesteadCredit)],
     ['= Non-referendum tax after credits', fmtCents(b.nonReferendumNet)],
     ['+ School referendum operating tax', fmtCents(b.referendumOperatingTax)],
-    [`+ School referendum debt tax ($${REFERENDUM.debt.value.toFixed(2)}, through ${REFERENDUM_DEBT_END_YEAR.value})`, fmtCents(b.referendumDebtTax)],
+    [`+ School referendum debt tax ($${REFERENDUM.debt!.value.toFixed(2)}, through ${REFERENDUM_DEBT_END_YEAR.value})`, fmtCents(b.referendumDebtTax)],
     ['Total estimated bill', fmtCents(b.total)],
   ];
   return (
@@ -48,7 +48,7 @@ function MathRows({ b }: { b: BillBreakdown }) {
 }
 
 export default function Results({ grossAV, district, homestead, assessmentYear, propertyReportUrl }: Props) {
-  const r = computeAllScenarios(grossAV, district);
+  const r = computeAllScenarios(grossAV, district, NOBLESVILLE);
   const passVsFail = r.passCommitted.total - r.fail.total;
   const passVsFailMax = r.passMax.total - r.fail.total;
 
@@ -74,7 +74,7 @@ export default function Results({ grossAV, district, homestead, assessmentYear, 
           <p className="mt-2 text-xs text-muted">Estimated annual bill</p>
           <div className="text-lg font-mono tabular-nums">{fmtDollars(r.passCommitted.total)}</div>
           <div className="mt-1 text-xs text-muted">
-            at the district&rsquo;s committed 2027 rate (${REFERENDUM.committed2027.value.toFixed(2)}); up to {fmtDollars(r.passMax.total)} if the
+            at the district&rsquo;s committed 2027 rate (${COMMITTED_2027.value.toFixed(2)}); up to {fmtDollars(r.passMax.total)} if the
             full authorized ${REFERENDUM.proposedMax.value.toFixed(2)} were levied
           </div>
           <p className="mt-2 text-xs text-muted">Change vs. current bill</p>
@@ -109,9 +109,9 @@ export default function Results({ grossAV, district, homestead, assessmentYear, 
           ))}
           <div className="text-xs text-muted space-y-1">
             <p>
-              The ${REFERENDUM.committed2027.value.toFixed(2)} figure is the district&rsquo;s public commitment for 2027 only — it is not legally
+              The ${COMMITTED_2027.value.toFixed(2)} figure is the district&rsquo;s public commitment for 2027 only — it is not legally
               binding, and later years may be set higher, up to the authorized ${REFERENDUM.proposedMax.value.toFixed(2)}.{' '}
-              <a className="text-accent underline" href={REFERENDUM.committed2027.source}>Source</a>.
+              <a className="text-accent underline" href={COMMITTED_2027.source}>Source</a>.
             </p>
             <p>
               Pay-2027 non-referendum rates are not certified until January 2027; this estimate holds them
