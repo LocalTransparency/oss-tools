@@ -7,7 +7,8 @@ parcel data at lookup time; nothing a visitor enters is stored or logged. Anonym
 page-view analytics only; user input never reaches analytics.
 
 - Spec: `docs/superpowers/specs/2026-07-15-referendum-tax-app-design.md`
-- All tax rates/parameters with sources: `lib/tax/assumptions.ts`
+- Statewide tax law (SEA 1 deductions, circuit breaker, homestead credit), with sources: `lib/tax/indiana/assumptions.ts`
+- Per-district referendum data (rates, commitments, tax districts): `lib/tax/indiana/districts/`
 
 ## Develop
 
@@ -28,5 +29,29 @@ Express Mode does not auto-deploy on a push. The app serves under its `basePath`
 ## Updating numbers
 
 When 2027 rates certify (January 2027) or the district updates its commitments,
-edit `lib/tax/assumptions.ts` only — every figure carries its source URL and a
-`confirmed | estimated | public-commitment` status that the UI displays.
+edit `lib/tax/indiana/districts/noblesville.ts` only — every figure carries its
+source URL and a `confirmed | estimated | public-commitment` status that the UI
+displays. Statewide law (deduction schedule, circuit breaker, homestead credit)
+lives separately in `lib/tax/indiana/assumptions.ts` and only changes when the
+legislature does.
+
+## Adding a district
+
+The tax engine and scenario math are statewide-law-plus-config: adding another
+Indiana school-district referendum is a data change, not a code change.
+
+1. Copy `lib/tax/indiana/districts/noblesville.ts` to a new file (e.g.
+   `lib/tax/indiana/districts/<district>.ts`) and export a
+   `DistrictReferendumConfig` for the new district — `id`, `name`, `county`,
+   its own `sources` URLs, `referendum` rates (`proposedMax` is required;
+   `currentOperating`, `debt`, `debtEndYear`, `committed2027` are optional),
+   a `gisGate` regex that coarsely matches the district's ArcGIS
+   `TAXDISTNAM` values, and the certified `taxDistricts` with their match
+   patterns and pay-year total rates.
+2. Fill in every rate with a real `Sourced<T>` value — `value`, `source` (an
+   `https://` URL), `status`, and an optional `note`. No placeholder or fake
+   district data ships in this codebase.
+3. Register it in `lib/tax/indiana/districts/index.ts`'s `DISTRICTS` map.
+
+`buildScenarios`, `computeAllScenarios`, `findDistrict`, and `computeBill` all
+take the config as a parameter, so no engine or scenario code needs to change.

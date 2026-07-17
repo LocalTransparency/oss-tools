@@ -1,16 +1,20 @@
-import { DEDUCTIONS, HOMESTEAD_CREDIT, REFERENDUM, REFERENDUM_DEBT_END_YEAR, SOURCES } from '@/lib/tax/assumptions';
+import { DEDUCTIONS, HOMESTEAD_CREDIT, SOURCES as STATE_SOURCES } from '@/lib/tax/indiana/assumptions';
+import { NOBLESVILLE } from '@/lib/tax/indiana/districts/noblesville';
 import Link from 'next/link';
 
 export const metadata = { title: 'Methodology — Noblesville Referendum Tax Estimator' };
 
+const REFERENDUM = NOBLESVILLE.referendum;
+const SOURCES: Record<string, string> = { ...STATE_SOURCES, ...NOBLESVILLE.sources };
+
 export default function Methodology() {
   const proposedMax = REFERENDUM.proposedMax.value.toFixed(2);
   const proposedMaxCents = Math.round(REFERENDUM.proposedMax.value * 100);
-  const currentOperating = REFERENDUM.currentOperating.value.toFixed(2);
-  const currentOperatingCents = Math.round(REFERENDUM.currentOperating.value * 100);
-  const debt = REFERENDUM.debt.value.toFixed(2);
-  const debtEndYear = REFERENDUM_DEBT_END_YEAR.value;
-  const committed2027 = REFERENDUM.committed2027.value.toFixed(2);
+  const currentOperating = REFERENDUM.currentOperating!.value.toFixed(2);
+  const currentOperatingCents = Math.round(REFERENDUM.currentOperating!.value * 100);
+  const debt = REFERENDUM.debt!.value.toFixed(2);
+  const debtEndYear = REFERENDUM.debtEndYear!.value;
+  const committed2027 = REFERENDUM.committed2027!.value.toFixed(2);
   const standard2026 = DEDUCTIONS[2026].value.standard.toLocaleString('en-US');
   const supp2026 = DEDUCTIONS[2026].value.supplementalRate * 100;
   const standard2027 = DEDUCTIONS[2027].value.standard.toLocaleString('en-US');
@@ -43,7 +47,7 @@ export default function Methodology() {
           than ${committed2027} for 2027 (and says it will not use the full ${proposedMax} in all eight years), but that
           commitment is not legally binding and later years may be higher. We show the bill at ${committed2027} and
           at ${proposedMax} so you can see both the plan and the ceiling.{' '}
-          <a className="text-accent underline" href={REFERENDUM.committed2027.source}>Source</a>
+          <a className="text-accent underline" href={REFERENDUM.committed2027!.source}>Source</a>
         </p>
         <p className="text-sm">
           This is also why you may have seen two very different cost figures: the ballot&rsquo;s
