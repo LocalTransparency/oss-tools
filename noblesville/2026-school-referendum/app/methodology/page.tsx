@@ -30,24 +30,24 @@ export default function Methodology() {
       <section className="space-y-2">
         <h2 className="text-lg font-medium">What&rsquo;s on the ballot</h2>
         <p className="text-sm">
-          Each Hamilton County school district this tool covers has an <em>operating</em> referendum on the
+          Each Hamilton County school district this tool covers has an <em>operating</em>{' '}referendum on the
           November 3, 2026 ballot. Each authorizes a rate of up to a district-specific maximum, per $100 of
           net assessed value, for up to 8 years (pay-2027 through 2034), replacing that district&rsquo;s current
           operating referendum. The specifics differ by district:
         </p>
         <ul className="list-disc space-y-1 pl-5 text-sm">
           <li>
-            Some districts also levy a <strong>separate referendum debt rate</strong> that continues regardless
+            Some districts also levy a <strong>separate referendum debt rate</strong>{' '}that continues regardless
             of this vote (Noblesville, Hamilton Southeastern, Westfield Washington). For them, &ldquo;fails&rdquo;
-            does <em>not</em> mean zero referendum tax — the debt line stays.
+            does <em>not</em>{' '}mean zero referendum tax — the debt line stays.
           </li>
           <li>
-            <strong>Carmel Clay</strong> is different: its 2026 question repeals and replaces <em>both</em> of its
+            <strong>Carmel Clay</strong>{' '}is different: its 2026 question repeals and replaces <em>both</em>{' '}of its
             current referendums — the operating rate and a school-safety rate — with a single new operating rate.
             If it fails, both current rates end.
           </li>
           <li>
-            <strong>Sheridan</strong> has no separate debt or safety component, so its whole current referendum is
+            <strong>Sheridan</strong>{' '}has no separate debt or safety component, so its whole current referendum is
             what&rsquo;s up for renewal.
           </li>
         </ul>
@@ -60,8 +60,8 @@ export default function Methodology() {
       <section className="space-y-2">
         <h2 className="text-lg font-medium">Why the &ldquo;if it passes&rdquo; figure sometimes shows two rates</h2>
         <p className="text-sm">
-          Every ballot authorizes a <em>maximum</em> rate, and a district&rsquo;s board sets the actual rate each
-          year within that ceiling. When a district has <em>publicly committed</em> to a specific first-year rate
+          Every ballot authorizes a <em>maximum</em>{' '}rate, and a district&rsquo;s board sets the actual rate each
+          year within that ceiling. When a district has <em>publicly committed</em>{' '}to a specific first-year rate
           below its maximum, we show the bill at both the committed rate and the authorized maximum, so you see
           both the plan and the ceiling. When a district has not published a fixed first-year rate (its board will
           set it annually), we show the authorized maximum only.
@@ -88,10 +88,10 @@ export default function Methodology() {
               0.41% × 0.54 × (AV − 40000) = 0.37% × 0.60 × (AV − 48000)  →  AV ≈ $440,000
       */}
       <section className="space-y-2">
-        <h2 className="text-lg font-medium">Why might my estimate go <em>down</em> if it passes?</h2>
+        <h2 className="text-lg font-medium">Why might my estimate go <em>down</em>{' '}if it passes?</h2>
         <p className="text-sm">
           For many higher-value owner-occupied homes, the estimate with the referendum passing can be slightly
-          <em> lower</em> than the current bill. That isn&rsquo;t an error — it&rsquo;s how the 2025 property tax
+          <em> lower</em>{' '}than the current bill. That isn&rsquo;t an error — it&rsquo;s how the 2025 property tax
           law interacts with the referendum rate:
         </p>
         <ul className="list-disc space-y-1 pl-5 text-sm">
