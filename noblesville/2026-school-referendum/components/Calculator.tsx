@@ -2,15 +2,16 @@
 
 import { useState } from 'react';
 import type { ParcelCandidate } from '@/lib/lookup/arcgis';
-import { findDistrict } from '@/lib/tax/engine';
+import { resolveTaxDistrict } from '@/lib/tax/indiana/districts/resolve';
+import { nameUncoveredDistrict } from '@/lib/tax/indiana/counties/hamilton';
 import { NOBLESVILLE } from '@/lib/tax/indiana/districts/noblesville';
-import type { TaxDistrict } from '@/lib/tax/types';
+import type { DistrictReferendumConfig, TaxDistrict } from '@/lib/tax/types';
 import { fmtDollars } from '@/lib/format';
 import Results from './Results';
 
 type Selection =
-  | { kind: 'parcel'; parcel: ParcelCandidate; district: TaxDistrict }
-  | { kind: 'manual'; grossAV: number; district: TaxDistrict };
+  | { kind: 'parcel'; parcel: ParcelCandidate; config: DistrictReferendumConfig; district: TaxDistrict }
+  | { kind: 'manual'; grossAV: number; config: DistrictReferendumConfig; district: TaxDistrict };
 
 export default function Calculator() {
   const [query, setQuery] = useState('');
@@ -21,11 +22,13 @@ export default function Calculator() {
   const [manualOpen, setManualOpen] = useState(false);
   const [manualAV, setManualAV] = useState('');
   const [manualDistrict, setManualDistrict] = useState(NOBLESVILLE.taxDistricts[3].name); // Noblesville City
-  const [outOfDistrict, setOutOfDistrict] = useState(false);
+  // null = covered/none; { name } = uncovered (name is the district name when
+  // verified, or null for the generic "not covered" message).
+  const [uncovered, setUncovered] = useState<{ name: string | null } | null>(null);
 
   async function lookup(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true); setError(null); setCandidates(null); setSelection(null); setOutOfDistrict(false);
+    setBusy(true); setError(null); setCandidates(null); setSelection(null); setUncovered(null);
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/lookup`, {
         method: 'POST',
@@ -52,10 +55,15 @@ export default function Calculator() {
   }
 
   function select(parcel: ParcelCandidate) {
-    const district = findDistrict(NOBLESVILLE, parcel.taxDistrictName);
-    if (!district) { setOutOfDistrict(true); setSelection(null); return; }
-    setOutOfDistrict(false);
-    setSelection({ kind: 'parcel', parcel, district });
+    const resolved = resolveTaxDistrict(parcel.taxDistrictName);
+    if (!resolved) {
+      setUncovered({ name: nameUncoveredDistrict(parcel.taxDistrictName) });
+      setSelection(null);
+      return;
+    }
+    setUncovered(null);
+    setSelection({ kind: 'parcel', parcel, config: resolved.config, district: resolved.district });
+    document.title = `${resolved.config.name} referendum — property tax estimate`;
   }
 
   function calculateManual(e: React.FormEvent) {
@@ -64,11 +72,11 @@ export default function Calculator() {
     const district = NOBLESVILLE.taxDistricts.find((d) => d.name === manualDistrict);
     if (!Number.isFinite(grossAV) || grossAV <= 0 || grossAV > 50_000_000 || !district) {
       setError('Enter a gross assessed value between $1 and $50,000,000.');
-      setOutOfDistrict(false); setSelection(null);
+      setUncovered(null); setSelection(null);
       return;
     }
-    setError(null); setOutOfDistrict(false);
-    setSelection({ kind: 'manual', grossAV, district });
+    setError(null); setUncovered(null);
+    setSelection({ kind: 'manual', grossAV, config: NOBLESVILLE, district });
   }
 
   return (
@@ -121,8 +129,8 @@ export default function Calculator() {
 
       {candidates && candidates.length === 0 && (
         <p className="text-sm">
-          No matching parcels found in the Noblesville Schools district. Check the spelling, try just the
-          street number and name, or enter your assessed value manually above.
+          No matching parcels found in Hamilton County. Check the spelling, try just the street
+          number and name, or enter your assessed value manually above.
         </p>
       )}
 
@@ -138,16 +146,18 @@ export default function Calculator() {
         </ul>
       )}
 
-      {outOfDistrict && (
+      {uncovered && (
         <p role="alert" className="rounded-md border border-border bg-surface p-3 text-sm">
-          This tool covers homes in the Noblesville Schools district (its five Hamilton County taxing
-          districts). That parcel&rsquo;s taxing district isn&rsquo;t one of them, so its school rates differ
-          and these numbers wouldn&rsquo;t apply.
+          {uncovered.name
+            ? `We found your parcel, but it's in the ${uncovered.name} district, which this tool doesn't cover yet. That district's school rates differ, so these numbers wouldn't apply.`
+            : `We found your parcel in Hamilton County, but it isn't in a school district this tool covers yet. Its school rates differ, so these numbers wouldn't apply.`}
         </p>
       )}
 
       {selection?.kind === 'parcel' && (
         <Results
+          config={selection.config}
+          addressLabel={selection.parcel.address}
           grossAV={selection.parcel.grossAV}
           district={selection.district}
           homestead={selection.parcel.homestead}
@@ -156,8 +166,15 @@ export default function Calculator() {
         />
       )}
       {selection?.kind === 'manual' && (
-        <Results grossAV={selection.grossAV} district={selection.district}
-          homestead={true} assessmentYear={null} propertyReportUrl={null} />
+        <Results
+          config={selection.config}
+          addressLabel={null}
+          grossAV={selection.grossAV}
+          district={selection.district}
+          homestead={true}
+          assessmentYear={null}
+          propertyReportUrl={null}
+        />
       )}
     </div>
   );
