@@ -2,12 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import type { ParcelCandidate } from '@/lib/lookup/arcgis';
+import { DISTRICTS } from '@/lib/tax/indiana/districts';
 import { resolveTaxDistrict } from '@/lib/tax/indiana/districts/resolve';
 import { nameUncoveredDistrict } from '@/lib/tax/indiana/counties/hamilton';
-import { NOBLESVILLE } from '@/lib/tax/indiana/districts/noblesville';
 import type { DistrictReferendumConfig, TaxDistrict } from '@/lib/tax/types';
 import { fmtDollars } from '@/lib/format';
 import Results from './Results';
+
+// Manual-entry <select> value: `${config.id}::${taxDistrict.name}`, so one dropdown
+// can span every covered district's taxing districts and still resolve both back.
+const manualKey = (configId: string, name: string) => `${configId}::${name}`;
 
 type Selection =
   | { kind: 'parcel'; parcel: ParcelCandidate; config: DistrictReferendumConfig; district: TaxDistrict }
@@ -15,7 +19,7 @@ type Selection =
 
 // Mirrors app/layout.tsx's metadata.title verbatim, so the tab restores to the
 // site's normal title once a selection is cleared (e.g. an uncovered parcel).
-const DEFAULT_TITLE = 'Noblesville Referendum Tax Estimator';
+const DEFAULT_TITLE = 'Hamilton County School Referendum Tax Estimator';
 
 export default function Calculator() {
   const [query, setQuery] = useState('');
@@ -25,7 +29,7 @@ export default function Calculator() {
   const [busy, setBusy] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [manualAV, setManualAV] = useState('');
-  const [manualDistrict, setManualDistrict] = useState(NOBLESVILLE.taxDistricts[3].name); // Noblesville City
+  const [manualDistrict, setManualDistrict] = useState(manualKey('noblesville', 'Noblesville City'));
   // null = covered/none; { name } = uncovered (name is the district name when
   // verified, or null for the generic "not covered" message).
   const [uncovered, setUncovered] = useState<{ name: string | null } | null>(null);
@@ -78,14 +82,16 @@ export default function Calculator() {
   function calculateManual(e: React.FormEvent) {
     e.preventDefault();
     const grossAV = Number(manualAV.replace(/[,$\s]/g, ''));
-    const district = NOBLESVILLE.taxDistricts.find((d) => d.name === manualDistrict);
-    if (!Number.isFinite(grossAV) || grossAV <= 0 || grossAV > 50_000_000 || !district) {
+    const [configId, districtName] = manualDistrict.split('::');
+    const config = Object.values(DISTRICTS).find((c) => c.id === configId);
+    const district = config?.taxDistricts.find((d) => d.name === districtName);
+    if (!Number.isFinite(grossAV) || grossAV <= 0 || grossAV > 50_000_000 || !config || !district) {
       setError('Enter a gross assessed value between $1 and $50,000,000.');
       setUncovered(null); setSelection(null);
       return;
     }
     setError(null); setUncovered(null);
-    setSelection({ kind: 'manual', grossAV, config: NOBLESVILLE, district });
+    setSelection({ kind: 'manual', grossAV, config, district });
   }
 
   return (
@@ -121,14 +127,20 @@ export default function Calculator() {
           <label htmlFor="manual-av" className="block font-medium">Gross assessed value</label>
           <input id="manual-av" className="w-full rounded-md border border-border bg-surface p-2" inputMode="numeric"
             placeholder="e.g. 350000" value={manualAV} onChange={(e) => setManualAV(e.target.value)} />
-          <label htmlFor="manual-district" className="block font-medium">Taxing district</label>
+          <label htmlFor="manual-district" className="block font-medium">School district &amp; taxing district</label>
           <select id="manual-district" className="w-full rounded-md border border-border bg-surface p-2"
             value={manualDistrict} onChange={(e) => setManualDistrict(e.target.value)}>
-            {NOBLESVILLE.taxDistricts.map((d) => <option key={d.name} value={d.name}>{d.name}</option>)}
+            {Object.values(DISTRICTS).map((cfg) => (
+              <optgroup key={cfg.id} label={cfg.name}>
+                {cfg.taxDistricts.map((d) => (
+                  <option key={manualKey(cfg.id, d.name)} value={manualKey(cfg.id, d.name)}>{d.name}</option>
+                ))}
+              </optgroup>
+            ))}
           </select>
           <p className="text-xs text-muted">
-            Inside Noblesville city limits, choose Noblesville City. Not sure? Your taxing district is
-            printed on your tax bill (Form TS-1).
+            Choose your school district, then your taxing district. Not sure of your taxing district?
+            It&rsquo;s printed on your tax bill (Form TS-1).
           </p>
           <button type="submit" className="rounded-md bg-accent px-4 py-2 font-medium text-accent-contrast hover:bg-accent-hover">Calculate</button>
         </form>

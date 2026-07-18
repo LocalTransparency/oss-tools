@@ -1,4 +1,4 @@
-# Noblesville Referendum Tax Estimator
+# Hamilton County School Referendum Tax Estimator
 
 Neutral, sourced estimates of a Hamilton County homeowner's property tax bill if
 their school district's November 3, 2026 operating referendum passes or fails,
