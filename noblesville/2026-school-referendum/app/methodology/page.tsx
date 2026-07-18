@@ -3,7 +3,7 @@ import { DISTRICTS } from '@/lib/tax/indiana/districts';
 import { NOBLESVILLE } from '@/lib/tax/indiana/districts/noblesville';
 import Link from 'next/link';
 
-export const metadata = { title: 'Methodology — Referendum Tax Estimator' };
+export const metadata = { title: 'Methodology — Hamilton County School Referendum Tax Estimator' };
 
 // Shared source URLs are identical across the Hamilton districts; read them off one config.
 const SHARED = NOBLESVILLE.sources;

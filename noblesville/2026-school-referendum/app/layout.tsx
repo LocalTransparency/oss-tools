@@ -31,9 +31,9 @@ const plexMono = IBM_Plex_Mono({
 const THEME_INIT = `(function(){try{var t=localStorage.getItem('lt-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t);}}catch(e){}})();`;
 
 export const metadata: Metadata = {
-  title: 'Noblesville Referendum Tax Estimator',
+  title: 'Hamilton County School Referendum Tax Estimator',
   description:
-    'Neutral, sourced estimates of your Noblesville property tax bill if the 2026 Noblesville Schools referendum passes or fails.',
+    'Neutral, sourced estimates of your Hamilton County property tax bill if your school district’s 2026 operating referendum passes or fails.',
 };
 
 // GTM_ID is read server-side at render time (not build time), and is
@@ -75,7 +75,7 @@ export default function RootLayout({
         </header>
         {children}
         <footer className="mx-auto max-w-3xl p-6 text-xs text-muted">
-          This site is not affiliated with Noblesville Schools or any campaign. Estimates only — not a
+          This site is not affiliated with any school district or campaign. Estimates only — not a
           bill. Addresses you search are never stored, logged, or sent to analytics. Basic anonymous
           usage statistics are collected.
         </footer>
