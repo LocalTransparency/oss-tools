@@ -20,6 +20,19 @@ export function nonReferendumRate(config: DistrictReferendumConfig, d: TaxDistri
 const VALID_CAP_CLASSES: readonly CapClass[] = [1, 2, 3];
 
 /**
+ * True only for an actual 1/2/3 cap class. `capClass: CapClass` is a
+ * compile-time promise only — a value crossing the `/api/lookup` JSON
+ * boundary (see EnrichedParcelCandidate in lib/lookup/arcgis.ts) can still
+ * arrive as `undefined`, `null`, `0`, or anything else at runtime. Exported
+ * so every place that treats a capClass as trustworthy — bucket math here,
+ * and the cap-class disclosure shown to the visitor in Calculator.tsx — uses
+ * the same definition of "valid" instead of two definitions drifting apart.
+ */
+export function isValidCapClass(value: unknown): value is CapClass {
+  return (VALID_CAP_CLASSES as readonly unknown[]).includes(value);
+}
+
+/**
  * Route a single gross AV entirely to one cap class.
  *
  * `capClass: CapClass` is a compile-time promise only. Every real caller
@@ -40,7 +53,7 @@ const VALID_CAP_CLASSES: readonly CapClass[] = [1, 2, 3];
  * remember to add or to accidentally skip.
  */
 export function bucketsOf(grossAV: number, capClass: CapClass): AvBuckets {
-  const cls: CapClass = VALID_CAP_CLASSES.includes(capClass) ? capClass : 1;
+  const cls: CapClass = isValidCapClass(capClass) ? capClass : 1;
   return {
     cap1: cls === 1 ? grossAV : 0,
     cap2: cls === 2 ? grossAV : 0,

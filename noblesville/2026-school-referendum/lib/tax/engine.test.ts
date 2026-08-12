@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { assertBucketsConsistent, bucketsOf, computeNetAV, computeBill, currentReferendumTotal, findDistrict, nonReferendumRate, totalGrossAV } from './engine';
+import { assertBucketsConsistent, bucketsOf, computeNetAV, computeBill, currentReferendumTotal, findDistrict, isValidCapClass, nonReferendumRate, totalGrossAV } from './engine';
 import { buildScenarios } from './scenarios';
 import { NOBLESVILLE } from './indiana/districts/noblesville';
 import type { CapClass, DistrictReferendumConfig } from './types';
@@ -61,6 +61,25 @@ describe('AvBuckets', () => {
     expect(bucketsOf(350000, 0 as unknown as CapClass)).toEqual({ cap1: 350000, cap2: 0, cap3: 0 });
     expect(bucketsOf(350000, 4 as unknown as CapClass)).toEqual({ cap1: 350000, cap2: 0, cap3: 0 });
     expect(bucketsOf(350000, '1' as unknown as CapClass)).toEqual({ cap1: 350000, cap2: 0, cap3: 0 });
+  });
+});
+
+describe('isValidCapClass', () => {
+  // Shared by bucketsOf's fallback and Calculator.tsx's cap-class disclosure
+  // fallback — both must agree on what counts as valid so the bill and the
+  // panel that explains it never disagree.
+  it('accepts exactly 1, 2, and 3', () => {
+    expect(isValidCapClass(1)).toBe(true);
+    expect(isValidCapClass(2)).toBe(true);
+    expect(isValidCapClass(3)).toBe(true);
+  });
+
+  it('rejects anything else, including values a JSON boundary could deliver', () => {
+    expect(isValidCapClass(undefined)).toBe(false);
+    expect(isValidCapClass(null)).toBe(false);
+    expect(isValidCapClass(0)).toBe(false);
+    expect(isValidCapClass(4)).toBe(false);
+    expect(isValidCapClass('1')).toBe(false);
   });
 });
 

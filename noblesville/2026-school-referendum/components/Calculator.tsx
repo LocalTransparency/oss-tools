@@ -5,7 +5,7 @@ import type { EnrichedParcelCandidate } from '@/lib/lookup/arcgis';
 import { DISTRICTS } from '@/lib/tax/indiana/districts';
 import { resolveTaxDistrict } from '@/lib/tax/indiana/districts/resolve';
 import { nameUncoveredDistrict } from '@/lib/tax/indiana/counties/hamilton';
-import { assertBucketsConsistent, bucketsOf } from '@/lib/tax/engine';
+import { assertBucketsConsistent, bucketsOf, isValidCapClass } from '@/lib/tax/engine';
 import type { CapClassInference } from '@/lib/tax/indiana/capClass';
 import type { AvBuckets, DistrictReferendumConfig, TaxDistrict } from '@/lib/tax/types';
 import { fmtDollars } from '@/lib/format';
@@ -24,6 +24,25 @@ const MANUAL_CAP_INFERENCE: CapClassInference = {
   capClass: 1,
   confidence: 'low',
   reason: 'Manual entries assume the homestead class — adjust the split below if this property is not a homestead.',
+};
+
+// A lookup candidate is parsed JSON from /api/lookup; capClass/capClassConfidence/
+// capClassReason: CapClass/... are compile-time promises only (see isValidCapClass
+// in lib/tax/engine.ts) and can arrive missing or malformed. bucketsOf already
+// falls back to cap class 1 so the BILL is never $0 for that case — but the
+// bill isn't the whole story: CapClassPanel is what's supposed to make that
+// assumption visible and correctable. Feeding it the raw (missing) fields
+// would render a broken sentence naming no class at all — correct math, an
+// assumption the visitor has no way to see or correct. This is that panel's
+// counterpart to MANUAL_CAP_INFERENCE above: same fallback class, same low
+// confidence, worded for "the lookup didn't tell us" rather than "you didn't
+// tell us."
+const FALLBACK_API_CAP_INFERENCE: CapClassInference = {
+  capClass: 1,
+  confidence: 'low',
+  reason:
+    "Hamilton County's lookup didn't return a cap class for this parcel, so it is treated as a homestead — " +
+    'adjust the split below if this property is not a homestead.',
 };
 
 type Selection =
@@ -93,6 +112,17 @@ export default function Calculator() {
     }
   }
 
+  // Shared remedy for any parcel-data problem below: clear the selection and
+  // steer the visitor to manual entry instead of leaving a broken or absent
+  // results screen with no way forward.
+  function failParcelData(message: string) {
+    setUncovered(null);
+    setSelection(null);
+    clearCapClassState();
+    setError(message);
+    setManualOpen(true);
+  }
+
   function select(parcel: EnrichedParcelCandidate) {
     const resolved = resolveTaxDistrict(parcel.taxDistrictName);
     if (!resolved) {
@@ -101,36 +131,52 @@ export default function Calculator() {
       clearCapClassState();
       return;
     }
+
+    // parcel is parsed JSON from /api/lookup — grossAV: number is a
+    // compile-time promise only, and the field can arrive missing,
+    // non-numeric, or non-positive at runtime. The twin of the capClass
+    // hole below: left unguarded it would silently build a $0 bill instead
+    // of failing loudly.
+    if (!Number.isFinite(parcel.grossAV) || parcel.grossAV <= 0) {
+      failParcelData(
+        "We couldn't read this parcel's assessed value from the county lookup, so no estimate is shown. " +
+          "You can enter your gross assessed value manually below — it's on your tax bill (Form TS-1) or the county property report.",
+      );
+      return;
+    }
+
     const parcelBuckets = bucketsOf(parcel.grossAV, parcel.capClass);
     try {
-      // parcel is parsed JSON from /api/lookup — bucketsOf falls back to
-      // cap class 1 for a missing/invalid capClass rather than zeroing the
-      // parcel out (see engine.ts), so this should never throw in practice.
-      // It's asserted here anyway: a $0 estimate is worse than an error
-      // screen for a tool whose premise is a trustworthy number, so any
-      // future regression in bucket construction must fail loudly here
-      // instead of silently reaching the results screen.
+      // bucketsOf falls back to cap class 1 for a missing/invalid capClass
+      // rather than zeroing the parcel out (see engine.ts), so this should
+      // never throw in practice. It's asserted here anyway: a $0 estimate
+      // is worse than an error screen for a tool whose premise is a
+      // trustworthy number, so any future regression in bucket construction
+      // must fail loudly here instead of silently reaching the results screen.
       assertBucketsConsistent(parcel.grossAV, parcelBuckets);
     } catch {
-      setUncovered(null);
-      setSelection(null);
-      clearCapClassState();
-      setError(
+      failParcelData(
         "We couldn't verify this parcel's assessed-value breakdown, so no estimate is shown. " +
           "You can enter your gross assessed value manually below — it's on your tax bill (Form TS-1) or the county property report.",
       );
-      setManualOpen(true);
       return;
     }
+
     setUncovered(null);
     setError(null);
     setSelection({ kind: 'parcel', parcel, config: resolved.config, district: resolved.district });
     setBuckets(parcelBuckets);
-    setCapInference({
-      capClass: parcel.capClass,
-      confidence: parcel.capClassConfidence,
-      reason: parcel.capClassReason,
-    });
+    // capClassConfidence/capClassReason are as untrustworthy at runtime as
+    // capClass itself — the same JSON boundary, the same missing-field risk.
+    // Trust all three together only when capClass itself checks out;
+    // otherwise show the same explicit "we don't know" panel state as
+    // manual entry rather than rendering fields built from data that may
+    // not be there.
+    setCapInference(
+      isValidCapClass(parcel.capClass)
+        ? { capClass: parcel.capClass, confidence: parcel.capClassConfidence, reason: parcel.capClassReason }
+        : FALLBACK_API_CAP_INFERENCE,
+    );
     setDeededAcres(parcel.deededAcres);
   }
 
