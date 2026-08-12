@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import type { AvBuckets, DistrictReferendumConfig } from '@/lib/tax/types';
 import { projectReferendumLine, projectionStats } from '@/lib/tax/projection';
 import { fmtCents, fmtRate } from '@/lib/format';
+import { ProjectionChart } from './ProjectionChart';
 
 interface Props {
   buckets: AvBuckets;
@@ -128,6 +129,8 @@ export function Projection({ buckets, config }: Props) {
           </button>
         )}
       </div>
+
+      <ProjectionChart rows={rows} />
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[720px] text-sm">
