@@ -60,22 +60,40 @@ export function computeNetAV(buckets: AvBuckets, s: ScenarioParams) {
 }
 
 export function computeBill(
-  grossAV: number,
+  buckets: AvBuckets,
   district: TaxDistrict,
   s: ScenarioParams,
   config: DistrictReferendumConfig,
 ): BillBreakdown {
-  const { standardDeduction, supplementalDeduction, netAV } = computeNetAV(grossAV, s);
+  const { standardDeduction, supplementalDeduction, cap2Deduction, netAV, byClass } =
+    computeNetAV(buckets, s);
 
   const nonRefRate = nonReferendumRate(config, district);
   const nonReferendumGross = (netAV * nonRefRate) / 100;
 
-  const circuitBreakerCap = grossAV * CIRCUIT_BREAKER_RATE.value;
-  const circuitBreakerCredit = Math.max(0, nonReferendumGross - circuitBreakerCap);
+  // Each class's cap is a percentage of that class's GROSS AV; a parcel's total
+  // cap is the sum. Credits are computed per class so a mixed parcel cannot use
+  // one class's headroom to shelter another class's liability.
+  const classes: CapClass[] = [1, 2, 3];
+  const grossByClass: Record<CapClass, number> = { 1: buckets.cap1, 2: buckets.cap2, 3: buckets.cap3 };
+
+  let circuitBreakerCap = 0;
+  let circuitBreakerCredit = 0;
+  let cap1AfterCap = 0;
+  for (const c of classes) {
+    const cap = grossByClass[c] * CIRCUIT_BREAKER_RATES.value[c];
+    const gross = (byClass[c] * nonRefRate) / 100;
+    const credit = Math.max(0, gross - cap);
+    circuitBreakerCap += cap;
+    circuitBreakerCredit += credit;
+    if (c === 1) cap1AfterCap = gross - credit;
+  }
   const afterCap = nonReferendumGross - circuitBreakerCredit;
 
+  // The supplemental homestead credit is a homestead benefit: it is computed
+  // from post-cap cap-1 liability only, and referendum taxes are excluded.
   const supplementalHomesteadCredit = Math.min(
-    afterCap * HOMESTEAD_CREDIT.value.rate,
+    cap1AfterCap * HOMESTEAD_CREDIT.value.rate,
     HOMESTEAD_CREDIT.value.max,
   );
   const nonReferendumNet = afterCap - supplementalHomesteadCredit;
@@ -86,9 +104,10 @@ export function computeBill(
 
   return {
     scenario: s.id,
-    grossAV,
+    grossAV: totalGrossAV(buckets),
     standardDeduction,
     supplementalDeduction,
+    cap2Deduction,
     netAV,
     nonReferendumRate: nonRefRate,
     nonReferendumGross,

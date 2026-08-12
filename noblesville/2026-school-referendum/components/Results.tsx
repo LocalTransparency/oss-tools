@@ -1,6 +1,7 @@
-import type { BillBreakdown, DistrictReferendumConfig, TaxDistrict } from '@/lib/tax/types';
+import type { AvBuckets, BillBreakdown, CapClass, DistrictReferendumConfig, TaxDistrict } from '@/lib/tax/types';
+import { bucketsOf } from '@/lib/tax/engine';
 import { buildScenarios, computeAllScenarios } from '@/lib/tax/scenarios';
-import { CIRCUIT_BREAKER_RATE, HOMESTEAD_CREDIT } from '@/lib/tax/indiana/assumptions';
+import { CIRCUIT_BREAKER_RATES, HOMESTEAD_CREDIT } from '@/lib/tax/indiana/assumptions';
 import { fmtCents, fmtDelta, fmtDollars, fmtRate } from '@/lib/format';
 
 interface Props {
@@ -13,7 +14,24 @@ interface Props {
   propertyReportUrl: string | null;
 }
 
-function MathRows({ b, config }: { b: BillBreakdown; config: DistrictReferendumConfig }) {
+/**
+ * With per-class caps, a parcel holding value in more than one constitutional
+ * class has a blended cap that no single percentage describes. Name the rate
+ * only when exactly one class carries gross AV; otherwise describe it as a
+ * blend across the classes present.
+ */
+export function circuitBreakerCapLabel(buckets: AvBuckets): string {
+  const grossByClass: Record<CapClass, number> = { 1: buckets.cap1, 2: buckets.cap2, 3: buckets.cap3 };
+  const present = ([1, 2, 3] as CapClass[]).filter((c) => grossByClass[c] > 0);
+  if (present.length <= 1) {
+    const cls = present[0] ?? 1;
+    return `Circuit breaker cap (${CIRCUIT_BREAKER_RATES.value[cls] * 100}% of gross AV)`;
+  }
+  const pct = present.map((c) => `${CIRCUIT_BREAKER_RATES.value[c] * 100}%`).join('/');
+  return `Circuit breaker cap (blended ${pct} by property class)`;
+}
+
+function MathRows({ b, buckets, config }: { b: BillBreakdown; buckets: AvBuckets; config: DistrictReferendumConfig }) {
   const { debt, debtEndYear } = config.referendum;
   const rows: Array<[string, string]> = [
     ['Gross assessed value', fmtCents(b.grossAV)],
@@ -21,7 +39,7 @@ function MathRows({ b, config }: { b: BillBreakdown; config: DistrictReferendumC
     ['− Supplemental homestead deduction', fmtCents(b.supplementalDeduction)],
     ['= Net assessed value', fmtCents(b.netAV)],
     [`Non-referendum tax (rate ${b.nonReferendumRate.toFixed(4)} per $100)`, fmtCents(b.nonReferendumGross)],
-    [`Circuit breaker cap (${CIRCUIT_BREAKER_RATE.value * 100}% of gross AV)`, fmtCents(b.circuitBreakerCap)],
+    [circuitBreakerCapLabel(buckets), fmtCents(b.circuitBreakerCap)],
     ['− Circuit breaker credit', fmtCents(b.circuitBreakerCredit)],
     [`− Supplemental homestead credit (${HOMESTEAD_CREDIT.value.rate * 100}%, max $${HOMESTEAD_CREDIT.value.max})`, fmtCents(b.supplementalHomesteadCredit)],
     ['= Non-referendum tax after credits', fmtCents(b.nonReferendumNet)],
@@ -53,7 +71,10 @@ export default function Results({
   const SOURCES = config.sources;
   const SCENARIOS = buildScenarios(config);
   const committed = REFERENDUM.committed2027;
-  const r = computeAllScenarios(grossAV, district, config);
+  // TEMPORARY: routes the whole gross AV into cap class 1 (homestead). Task 12
+  // replaces this with the cap class inferred from parcel data.
+  const buckets = bucketsOf(grossAV, 1);
+  const r = computeAllScenarios(buckets, district, config);
   const passVsFail = r.passCommitted.total - r.fail.total;
   const passVsFailMax = r.passMax.total - r.fail.total;
 
@@ -134,7 +155,7 @@ export default function Results({
           {([r.current, r.passCommitted, r.passMax, r.fail] as const).map((b) => (
             <div key={b.scenario}>
               <h3 className="mb-2 font-medium">{SCENARIOS[b.scenario].label}</h3>
-              <MathRows b={b} config={config} />
+              <MathRows b={b} buckets={buckets} config={config} />
             </div>
           ))}
           <div className="text-xs text-muted space-y-1">

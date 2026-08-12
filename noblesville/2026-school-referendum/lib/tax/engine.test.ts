@@ -78,7 +78,7 @@ const township = findDistrict(NOBLESVILLE, 'Noblesville Twp')!;
 
 describe('computeBill — anchored to official figures', () => {
   it('reproduces the pay-2026 worked example: $350k Noblesville City homestead ≈ $4,015.40', () => {
-    const b = computeBill(350000, city, SCENARIOS.current, NOBLESVILLE);
+    const b = computeBill(bucketsOf(350000, 1), city, SCENARIOS.current, NOBLESVILLE);
     expect(b.netAV).toBeCloseTo(181200, 2);
     expect(b.nonReferendumGross).toBeCloseTo(3814.08, 2);   // 181200 × 2.1049%
     expect(b.circuitBreakerCap).toBeCloseTo(3500, 2);        // 1% × 350000
@@ -90,13 +90,13 @@ describe('computeBill — anchored to official figures', () => {
   });
 
   it('reproduces the official ballot figure: $350k home at $0.57 max → referendum operating tax ≈ $954.18', () => {
-    const b = computeBill(350000, city, SCENARIOS.passMax, NOBLESVILLE);
+    const b = computeBill(bucketsOf(350000, 1), city, SCENARIOS.passMax, NOBLESVILLE);
     expect(b.referendumOperatingTax).toBeCloseTo(954.18, 2); // 167400 × 0.57%
     expect(b.total).toBeCloseTo(4288.1, 2);
   });
 
   it('pass at committed $0.385: $350k city home ≈ $3,978.41', () => {
-    const b = computeBill(350000, city, SCENARIOS.passCommitted, NOBLESVILLE);
+    const b = computeBill(bucketsOf(350000, 1), city, SCENARIOS.passCommitted, NOBLESVILLE);
     expect(b.nonReferendumNet).toBeCloseTo(3200, 2);  // 3523.60 capped at 3500, minus $300 credit
     expect(b.referendumOperatingTax).toBeCloseTo(644.49, 2); // 167400 × 0.385%
     expect(b.referendumTax).toBeCloseTo(778.41, 2);   // 167400 × 0.465%
@@ -104,7 +104,7 @@ describe('computeBill — anchored to official figures', () => {
   });
 
   it('fail: $350k city home ≈ $3,333.92 — $0.08 debt rate still applies', () => {
-    const b = computeBill(350000, city, SCENARIOS.fail, NOBLESVILLE);
+    const b = computeBill(bucketsOf(350000, 1), city, SCENARIOS.fail, NOBLESVILLE);
     expect(b.referendumOperatingTax).toBe(0);
     expect(b.referendumDebtTax).toBeCloseTo(133.92, 2); // 167400 × 0.08%
     expect(b.total).toBeCloseTo(3333.92, 2);
@@ -113,7 +113,7 @@ describe('computeBill — anchored to official figures', () => {
 
 describe('computeBill — cap and credit boundaries', () => {
   it('high AV: 1% cap binds hard ($800k city, pay-2026)', () => {
-    const b = computeBill(800000, city, SCENARIOS.current, NOBLESVILLE);
+    const b = computeBill(bucketsOf(800000, 1), city, SCENARIOS.current, NOBLESVILLE);
     expect(b.nonReferendumGross).toBeCloseTo(9497.31, 2);
     expect(b.circuitBreakerCredit).toBeCloseTo(1497.31, 2);
     expect(b.supplementalHomesteadCredit).toBeCloseTo(300, 2);
@@ -121,14 +121,14 @@ describe('computeBill — cap and credit boundaries', () => {
   });
 
   it('township: cap does not bind, credit below $300 ($350k, pay-2026)', () => {
-    const b = computeBill(350000, township, SCENARIOS.current, NOBLESVILLE);
+    const b = computeBill(bucketsOf(350000, 1), township, SCENARIOS.current, NOBLESVILLE);
     expect(b.circuitBreakerCredit).toBe(0);                      // 2526.65 < 3500
     expect(b.supplementalHomesteadCredit).toBeCloseTo(252.67, 2); // 10% of 2526.65
     expect(b.total).toBeCloseTo(3089.39, 2);
   });
 
   it('zero net AV → zero everything', () => {
-    const b = computeBill(30000, city, SCENARIOS.current, NOBLESVILLE);
+    const b = computeBill(bucketsOf(30000, 1), city, SCENARIOS.current, NOBLESVILLE);
     expect(b.total).toBe(0);
     expect(b.supplementalHomesteadCredit).toBe(0);
   });
@@ -150,7 +150,7 @@ describe('computeBill — cap and credit boundaries', () => {
     expect(nonReferendumRate(sparse, district)).toBe(2.0);
 
     const scenarios = buildScenarios(sparse);
-    const b = computeBill(350000, district, scenarios.current, sparse);
+    const b = computeBill(bucketsOf(350000, 1), district, scenarios.current, sparse);
     // pay-2026 net AV 181,200 at the full 2.0 rate, capped at 1% of gross, minus $300 credit
     expect(b.nonReferendumGross).toBeCloseTo(3624, 2);   // 181200 × 2.0%
     expect(b.circuitBreakerCredit).toBeCloseTo(124, 2);  // capped at 3500
@@ -159,12 +159,42 @@ describe('computeBill — cap and credit boundaries', () => {
   });
 
   it('referendum tax is excluded from both the cap and the credit base', () => {
-    const b = computeBill(800000, city, SCENARIOS.passMax, NOBLESVILLE);
+    const b = computeBill(bucketsOf(800000, 1), city, SCENARIOS.passMax, NOBLESVILLE);
     // cap applies to non-referendum only:
     expect(b.nonReferendumGross - b.circuitBreakerCredit).toBeCloseTo(8000, 2);
     // referendum stacks on top, uncapped:
     expect(b.referendumTax).toBeCloseTo(410400 * 0.0065, 2);
     // credit computed from post-cap non-referendum liability only:
     expect(b.supplementalHomesteadCredit).toBe(300);
+  });
+});
+
+describe('computeBill — per-class circuit breaker', () => {
+  it('applies the 2% cap to cap-2 AV', () => {
+    // $400k non-homestead residential, pay-2027: net AV 400000 × (1 − 0.12) = 352,000
+    // non-referendum 2.1049% × 352000 = 7,409.25; cap = 2% × 400000 = 8,000 → no credit
+    const b = computeBill({ cap1: 0, cap2: 400000, cap3: 0 }, city, SCENARIOS.passCommitted, NOBLESVILLE);
+    expect(b.netAV).toBeCloseTo(352000, 2);
+    expect(b.circuitBreakerCap).toBeCloseTo(8000, 2);
+    expect(b.circuitBreakerCredit).toBe(0);
+  });
+
+  it('applies the 3% cap to cap-3 AV and grants no homestead credit', () => {
+    const b = computeBill({ cap1: 0, cap2: 0, cap3: 400000 }, city, SCENARIOS.passCommitted, NOBLESVILLE);
+    expect(b.netAV).toBeCloseTo(400000, 2);
+    expect(b.circuitBreakerCap).toBeCloseTo(12000, 2);
+    expect(b.supplementalHomesteadCredit).toBe(0);
+  });
+
+  it('a mixed parcel caps each class against its own gross AV', () => {
+    const b = computeBill({ cap1: 350000, cap2: 100000, cap3: 0 }, city, SCENARIOS.passCommitted, NOBLESVILLE);
+    expect(b.circuitBreakerCap).toBeCloseTo(350000 * 0.01 + 100000 * 0.02, 2); // 5,500
+  });
+
+  it('the supplemental homestead credit is granted only on cap-1 liability', () => {
+    const homestead = computeBill(bucketsOf(350000, 1), city, SCENARIOS.current, NOBLESVILLE);
+    const rental = computeBill(bucketsOf(350000, 2), city, SCENARIOS.current, NOBLESVILLE);
+    expect(homestead.supplementalHomesteadCredit).toBeCloseTo(300, 2);
+    expect(rental.supplementalHomesteadCredit).toBe(0);
   });
 });

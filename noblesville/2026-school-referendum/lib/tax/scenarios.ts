@@ -1,4 +1,4 @@
-import type { BillBreakdown, DistrictReferendumConfig, ScenarioId, ScenarioParams, TaxDistrict } from './types';
+import type { AvBuckets, BillBreakdown, DistrictReferendumConfig, ScenarioId, ScenarioParams, TaxDistrict } from './types';
 import { DEDUCTIONS } from './indiana/assumptions';
 import { computeBill } from './engine';
 import { fmtRate } from '../format';
@@ -58,15 +58,15 @@ export function buildScenarios(config: DistrictReferendumConfig): Record<Scenari
 }
 
 export function computeAllScenarios(
-  grossAV: number,
+  buckets: AvBuckets,
   district: TaxDistrict,
   config: DistrictReferendumConfig,
 ): ScenarioResults {
   const scenarios = buildScenarios(config);
   return {
-    current: computeBill(grossAV, district, scenarios.current, config),
-    passCommitted: computeBill(grossAV, district, scenarios.passCommitted, config),
-    passMax: computeBill(grossAV, district, scenarios.passMax, config),
-    fail: computeBill(grossAV, district, scenarios.fail, config),
+    current: computeBill(buckets, district, scenarios.current, config),
+    passCommitted: computeBill(buckets, district, scenarios.passCommitted, config),
+    passMax: computeBill(buckets, district, scenarios.passMax, config),
+    fail: computeBill(buckets, district, scenarios.fail, config),
   };
 }

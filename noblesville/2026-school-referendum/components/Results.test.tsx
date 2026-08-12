@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import Results from './Results';
+import Results, { circuitBreakerCapLabel } from './Results';
 import { findDistrict } from '@/lib/tax/engine';
 import { NOBLESVILLE } from '@/lib/tax/indiana/districts/noblesville';
 import { CARMEL_CLAY } from '@/lib/tax/indiana/districts/carmel-clay';
@@ -100,5 +100,33 @@ describe('<Results>', () => {
     expect(screen.queryByText(/referendum debt tax/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/public commitment for 2027 only/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/committed 2027 rate/i)).not.toBeInTheDocument();
+  });
+
+  it('names the single class rate in the circuit breaker cap label when only one class carries gross AV', () => {
+    renderCity(); // grossAV routes entirely into cap class 1 (homestead) today
+    expect(screen.getAllByText(/circuit breaker cap \(1% of gross AV\)/i).length).toBeGreaterThan(0);
+  });
+});
+
+describe('circuitBreakerCapLabel', () => {
+  it('names the rate when exactly one cap class has nonzero gross AV', () => {
+    expect(circuitBreakerCapLabel({ cap1: 350000, cap2: 0, cap3: 0 })).toBe(
+      'Circuit breaker cap (1% of gross AV)',
+    );
+    expect(circuitBreakerCapLabel({ cap1: 0, cap2: 400000, cap3: 0 })).toBe(
+      'Circuit breaker cap (2% of gross AV)',
+    );
+    expect(circuitBreakerCapLabel({ cap1: 0, cap2: 0, cap3: 400000 })).toBe(
+      'Circuit breaker cap (3% of gross AV)',
+    );
+  });
+
+  it('describes a blended cap, never a single percentage, when more than one class has nonzero gross AV', () => {
+    expect(circuitBreakerCapLabel({ cap1: 350000, cap2: 100000, cap3: 0 })).toBe(
+      'Circuit breaker cap (blended 1%/2% by property class)',
+    );
+    expect(circuitBreakerCapLabel({ cap1: 350000, cap2: 100000, cap3: 50000 })).toBe(
+      'Circuit breaker cap (blended 1%/2%/3% by property class)',
+    );
   });
 });

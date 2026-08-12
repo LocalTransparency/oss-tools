@@ -55,7 +55,7 @@ describe('buildScenarios', () => {
 
 describe('computeAllScenarios', () => {
   it('returns all four scenarios for a $350k city home', () => {
-    const r = computeAllScenarios(350000, city, NOBLESVILLE);
+    const r = computeAllScenarios(bucketsOf(350000, 1), city, NOBLESVILLE);
     expect(r.current.total).toBeCloseTo(4015.4, 2);
     expect(r.passCommitted.total).toBeCloseTo(3978.41, 2);
     expect(r.passMax.total).toBeCloseTo(4288.1, 2);
@@ -63,17 +63,17 @@ describe('computeAllScenarios', () => {
   });
 
   it('pass-vs-fail delta at committed rate = referendum operating tax ($686.34 for $350k)', () => {
-    const r = computeAllScenarios(350000, city, NOBLESVILLE);
+    const r = computeAllScenarios(bucketsOf(350000, 1), city, NOBLESVILLE);
     expect(r.passCommitted.total - r.fail.total).toBeCloseTo(644.49, 2); // 167400 × 0.385%
   });
 
   it('pass-vs-fail delta at max rate matches the ballot figure ($954.18)', () => {
-    const r = computeAllScenarios(350000, city, NOBLESVILLE);
+    const r = computeAllScenarios(bucketsOf(350000, 1), city, NOBLESVILLE);
     expect(r.passMax.total - r.fail.total).toBeCloseTo(954.18, 2);
   });
 
   it('township $350k home pays LESS under pass than currently (net AV shrinks, cap not binding)', () => {
-    const r = computeAllScenarios(350000, township, NOBLESVILLE);
+    const r = computeAllScenarios(bucketsOf(350000, 1), township, NOBLESVILLE);
     expect(r.current.total).toBeCloseTo(3089.39, 2);
     expect(r.passCommitted.total).toBeCloseTo(2879.21, 2);
     expect(r.passCommitted.total).toBeLessThan(r.current.total);
@@ -95,17 +95,17 @@ describe('computeAllScenarios', () => {
     });
 
     it('below the crossover ($120k AV), pass-committed still increases vs. current', () => {
-      const r = computeAllScenarios(120000, city, NOBLESVILLE);
+      const r = computeAllScenarios(bucketsOf(120000, 1), city, NOBLESVILLE);
       expect(r.passCommitted.total).toBeGreaterThan(r.current.total);
     });
 
     it('above the crossover ($130k AV), pass-committed decreases vs. current', () => {
-      const r = computeAllScenarios(130000, city, NOBLESVILLE);
+      const r = computeAllScenarios(bucketsOf(130000, 1), city, NOBLESVILLE);
       expect(r.passCommitted.total).toBeLessThan(r.current.total);
     });
 
     it('at $350k AV, pass-committed decreases while pass-max still increases', () => {
-      const r = computeAllScenarios(350000, city, NOBLESVILLE);
+      const r = computeAllScenarios(bucketsOf(350000, 1), city, NOBLESVILLE);
       expect(r.passCommitted.total).toBeLessThan(r.current.total);
       expect(r.passMax.total).toBeGreaterThan(r.current.total);
     });
@@ -115,8 +115,8 @@ describe('computeAllScenarios', () => {
     // the non-referendum tax, circuit-breaker credit, and supplemental homestead credit all shift
     // with net assessed value too — so this bracket is the guard against the page copy drifting.
     it('pins the total-bill crossover to the $120k-$130k bracket', () => {
-      const below = computeAllScenarios(120000, city, NOBLESVILLE);
-      const above = computeAllScenarios(130000, city, NOBLESVILLE);
+      const below = computeAllScenarios(bucketsOf(120000, 1), city, NOBLESVILLE);
+      const above = computeAllScenarios(bucketsOf(130000, 1), city, NOBLESVILLE);
       expect(below.passCommitted.total).toBeGreaterThan(below.current.total);
       expect(above.passCommitted.total).toBeLessThan(above.current.total);
     });

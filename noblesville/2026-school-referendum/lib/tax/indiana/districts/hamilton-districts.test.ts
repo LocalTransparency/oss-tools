@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { DISTRICTS } from './index';
 import { resolveTaxDistrict } from './resolve';
-import { nonReferendumRate } from '../../engine';
+import { bucketsOf, nonReferendumRate } from '../../engine';
 import { buildScenarios, computeAllScenarios } from '../../scenarios';
 
 const ALL = Object.entries(DISTRICTS);
@@ -39,7 +39,7 @@ describe('scenario shape per district', () => {
   it('for a positive-AV homestead, pass-at-max is the highest and fail the lowest total', () => {
     for (const [, config] of ALL) {
       const district = config.taxDistricts[0];
-      const r = computeAllScenarios(350000, district, config);
+      const r = computeAllScenarios(bucketsOf(350000, 1), district, config);
       expect(r.fail.total).toBeLessThanOrEqual(r.current.total);
       expect(r.passMax.total).toBeGreaterThanOrEqual(r.passCommitted.total);
       expect(r.passMax.total).toBeGreaterThan(r.fail.total);
