@@ -83,7 +83,7 @@ $0.57 DLGF-authorized maximum.
 | 2033 | $0.545 | 3.5% |
 | 2034 | $0.545 | 3.5% |
 
-The rate rises 4.0 cents per year through 2031, then holds at $0.545 — never reaching the
+The rate rises 1.5 cents for 2027, then 4.0 cents per year through 2031, then holds at $0.545 — never reaching the
 $0.57 authorized maximum. The district states its 2027 AV-growth figure (5.3%) as "the
 median annual growth of local existing residential parcels between the Hamilton County 2026
 and 2027 certified net assessed value data sets"; later years hold flat at 3.5%. This tool's

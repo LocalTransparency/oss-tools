@@ -104,8 +104,10 @@ export default function Results({
 
       {!homestead && (
         <p className="rounded-md border border-warning-border bg-warning-bg p-3 text-sm text-warning-fg">
-          County records do not show a homestead deduction for this parcel. This estimate
-          assumes an owner-occupied homestead and will not match bills for rentals or second homes.
+          County records do not show a homestead deduction for this parcel, so its cap class
+          was inferred from county parcel attributes rather than a homestead flag. A parcel&rsquo;s
+          value can span more than one class — check the split in the panel above and adjust it
+          if it doesn&rsquo;t match your own records.
         </p>
       )}
 

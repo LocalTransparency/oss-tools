@@ -140,7 +140,10 @@ export function Projection({ buckets, config }: Props) {
             are the referendum-operating-only series the four statistics below are computed from.
             The <strong>debt</strong> columns are shown separately and excluded from those
             statistics, because {config.name}&rsquo;s referendum debt rate is levied through{' '}
-            {debtEndLabel} regardless of whether this referendum passes.
+            {debtEndLabel} regardless of whether this referendum passes. The scenario figures
+            above price the assessed value as entered; this table instead applies{' '}
+            {config.name}&rsquo;s assessed-value growth assumption, so the {firstProjectedYear}{' '}
+            figures differ between the two.
           </caption>
           <thead>
             <tr className="border-b border-border-strong text-left">

@@ -174,7 +174,7 @@ export default function Methodology() {
         <ul className="list-disc space-y-1 pl-5 text-sm">
           <li>2027 non-referendum rates are not certified until January 2027; we hold them at certified 2026 levels (<a className="text-accent underline" href={SHARED.budgetOrder2026}>2026 budget order</a>).</li>
           <li>Assessed values come from Hamilton County&rsquo;s public parcel data at lookup time and reflect the most recent assessment.</li>
-          <li>This tool models owner-occupied homesteads only (1% cap class). Rentals, farms, and businesses follow different rules.</li>
+          <li>This tool resolves each parcel&rsquo;s constitutional cap class (1% homestead, 2% other residential and agricultural, 3% all other) from Hamilton County&rsquo;s public parcel attributes, applies the matching cap to each class, and applies homestead deductions only to homestead value and the SEA 1 Cap 2 deduction only to cap-2 value. The inference identifies a parcel&rsquo;s dominant class only; it cannot derive how a single parcel&rsquo;s value splits across classes, because Hamilton County&rsquo;s live public parcel service doesn&rsquo;t expose that split (Indiana&rsquo;s statutory PARCEL file does — the county&rsquo;s live feed used here doesn&rsquo;t). You can correct the split yourself in the cap-class panel.</li>
           <li>Other deductions some households have (mortgage age 65+, veteran, etc.) are not modeled and would lower all columns.</li>
         </ul>
       </section>

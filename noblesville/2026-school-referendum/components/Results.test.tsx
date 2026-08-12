@@ -45,7 +45,8 @@ describe('<Results>', () => {
 
   it('shows a non-homestead notice when homestead is false', () => {
     renderCity({ homestead: false });
-    expect(screen.getByText(/assumes an owner-occupied homestead/i)).toBeInTheDocument();
+    expect(screen.getByText(/cap class\s+was inferred from county parcel attributes/i)).toBeInTheDocument();
+    expect(screen.queryByText(/assumes an owner-occupied homestead/i)).not.toBeInTheDocument();
   });
 
   it('exposes the math breakdown with net AV and cap figures', () => {

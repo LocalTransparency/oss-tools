@@ -43,6 +43,19 @@ describe('Projection', () => {
     const { container } = render(<Projection buckets={buckets} config={noSchedule} />);
     expect(container).toBeEmptyDOMElement();
   });
+
+  // Regression guard: the scenario cards above this table price the entered AV
+  // as-is, while this table grows it by the district's assumption, so the same
+  // year (2027) shows two different, both-correct referendum-operating figures
+  // ($644.49/yr in the scenario cards vs. $683.06/yr here for a $350k homestead)
+  // with nothing else on screen reconciling them. The caption must say so.
+  it('reconciles the caption’s "for the entered assessed value" claim with the table’s grown figures', () => {
+    render(<Projection buckets={buckets} config={NOBLESVILLE} />);
+    expect(
+      screen.getByText(/scenario figures above price the assessed value as entered/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/2027 figures differ between the two/i)).toBeInTheDocument();
+  });
 });
 
 // Regression guard for Task 13's hard requirement: the four headline statistics
