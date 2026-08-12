@@ -2,6 +2,7 @@ import type { AvBuckets, BillBreakdown, CapClass, DistrictReferendumConfig, TaxD
 import { buildScenarios, computeAllScenarios } from '@/lib/tax/scenarios';
 import { CIRCUIT_BREAKER_RATES, HOMESTEAD_CREDIT } from '@/lib/tax/indiana/assumptions';
 import { fmtCents, fmtDelta, fmtDollars, fmtRate } from '@/lib/format';
+import { Projection } from './Projection';
 
 interface Props {
   config: DistrictReferendumConfig;
@@ -145,6 +146,8 @@ export default function Results({
             : <><span className="text-lg font-mono">{fmtDelta(passVsFailMax)}/yr</span>{' '}({fmtCents(passVsFailMax / 12)}/mo) at the authorized maximum rate.</>}
         </p>
       </div>
+
+      <Projection buckets={buckets} config={config} />
 
       <details className="rounded-md border border-border bg-surface p-4">
         <summary className="cursor-pointer font-medium">How this was calculated</summary>
