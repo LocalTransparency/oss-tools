@@ -39,7 +39,7 @@ export interface CapClassInference {
 const BASE_ASSESSMENT_YEAR = 2026;
 
 /** State DLGF calculator wording for each cap class — quoted verbatim below, not paraphrased. */
-const CLASS_LABEL: Record<CapClass, string> = {
+export const CLASS_LABEL: Record<CapClass, string> = {
   1: 'Homestead (Owner-occupied residence)',
   2: 'Residential Rental, Non-Homestead Residential, and Agricultural',
   3: 'Other',

@@ -1,20 +1,33 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { ParcelCandidate } from '@/lib/lookup/arcgis';
+import type { EnrichedParcelCandidate } from '@/lib/lookup/arcgis';
 import { DISTRICTS } from '@/lib/tax/indiana/districts';
 import { resolveTaxDistrict } from '@/lib/tax/indiana/districts/resolve';
 import { nameUncoveredDistrict } from '@/lib/tax/indiana/counties/hamilton';
-import type { DistrictReferendumConfig, TaxDistrict } from '@/lib/tax/types';
+import { bucketsOf } from '@/lib/tax/engine';
+import type { CapClassInference } from '@/lib/tax/indiana/capClass';
+import type { AvBuckets, DistrictReferendumConfig, TaxDistrict } from '@/lib/tax/types';
 import { fmtDollars } from '@/lib/format';
+import { CapClassPanel } from './CapClassPanel';
 import Results from './Results';
 
 // Manual-entry <select> value: `${config.id}::${taxDistrict.name}`, so one dropdown
 // can span every covered district's taxing districts and still resolve both back.
 const manualKey = (configId: string, name: string) => `${configId}::${name}`;
 
+// Manual entry has no county parcel data to infer a cap class from. It
+// defaults to the homestead class (matching this tool's pre-override
+// behavior) at low confidence, so the override panel is what visibly invites
+// a correction for a rental, farmland, or commercial parcel entered by hand.
+const MANUAL_CAP_INFERENCE: CapClassInference = {
+  capClass: 1,
+  confidence: 'low',
+  reason: 'Manual entries assume the homestead class — adjust the split below if this property is not a homestead.',
+};
+
 type Selection =
-  | { kind: 'parcel'; parcel: ParcelCandidate; config: DistrictReferendumConfig; district: TaxDistrict }
+  | { kind: 'parcel'; parcel: EnrichedParcelCandidate; config: DistrictReferendumConfig; district: TaxDistrict }
   | { kind: 'manual'; grossAV: number; config: DistrictReferendumConfig; district: TaxDistrict };
 
 // Mirrors app/layout.tsx's metadata.title verbatim, so the tab restores to the
@@ -23,7 +36,7 @@ const DEFAULT_TITLE = 'Hamilton County School Referendum Tax Estimator';
 
 export default function Calculator() {
   const [query, setQuery] = useState('');
-  const [candidates, setCandidates] = useState<ParcelCandidate[] | null>(null);
+  const [candidates, setCandidates] = useState<EnrichedParcelCandidate[] | null>(null);
   const [selection, setSelection] = useState<Selection | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -33,6 +46,17 @@ export default function Calculator() {
   // null = covered/none; { name } = uncovered (name is the district name when
   // verified, or null for the generic "not covered" message).
   const [uncovered, setUncovered] = useState<{ name: string | null } | null>(null);
+  // The AV split shown/edited by CapClassPanel. Initialized from the cap-class
+  // inference on selection and freely editable afterward — see CapClassPanel.
+  const [buckets, setBuckets] = useState<AvBuckets | null>(null);
+  const [capInference, setCapInference] = useState<CapClassInference | null>(null);
+  const [deededAcres, setDeededAcres] = useState(0);
+
+  function clearCapClassState() {
+    setBuckets(null);
+    setCapInference(null);
+    setDeededAcres(0);
+  }
 
   useEffect(() => {
     document.title = selection
@@ -43,6 +67,7 @@ export default function Calculator() {
   async function lookup(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true); setError(null); setCandidates(null); setSelection(null); setUncovered(null);
+    clearCapClassState();
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ''}/api/lookup`, {
         method: 'POST',
@@ -56,7 +81,7 @@ export default function Calculator() {
         return;
       }
       if (!res.ok) throw new Error('lookup-failed');
-      const body = (await res.json()) as { candidates: ParcelCandidate[] };
+      const body = (await res.json()) as { candidates: EnrichedParcelCandidate[] };
       setCandidates(body.candidates);
     } catch {
       setError(
@@ -68,15 +93,23 @@ export default function Calculator() {
     }
   }
 
-  function select(parcel: ParcelCandidate) {
+  function select(parcel: EnrichedParcelCandidate) {
     const resolved = resolveTaxDistrict(parcel.taxDistrictName);
     if (!resolved) {
       setUncovered({ name: nameUncoveredDistrict(parcel.taxDistrictName) });
       setSelection(null);
+      clearCapClassState();
       return;
     }
     setUncovered(null);
     setSelection({ kind: 'parcel', parcel, config: resolved.config, district: resolved.district });
+    setBuckets(bucketsOf(parcel.grossAV, parcel.capClass));
+    setCapInference({
+      capClass: parcel.capClass,
+      confidence: parcel.capClassConfidence,
+      reason: parcel.capClassReason,
+    });
+    setDeededAcres(parcel.deededAcres);
   }
 
   function calculateManual(e: React.FormEvent) {
@@ -88,10 +121,14 @@ export default function Calculator() {
     if (!Number.isFinite(grossAV) || grossAV <= 0 || grossAV > 50_000_000 || !config || !district) {
       setError('Enter a gross assessed value between $1 and $50,000,000.');
       setUncovered(null); setSelection(null);
+      clearCapClassState();
       return;
     }
     setError(null); setUncovered(null);
     setSelection({ kind: 'manual', grossAV, config, district });
+    setBuckets(bucketsOf(grossAV, 1));
+    setCapInference(MANUAL_CAP_INFERENCE);
+    setDeededAcres(0);
   }
 
   return (
@@ -175,22 +212,31 @@ export default function Calculator() {
         </p>
       )}
 
-      {selection?.kind === 'parcel' && (
+      {selection && buckets && capInference && (
+        <CapClassPanel
+          value={buckets}
+          inference={capInference}
+          deededAcres={deededAcres}
+          onChange={setBuckets}
+        />
+      )}
+
+      {selection?.kind === 'parcel' && buckets && (
         <Results
           config={selection.config}
           addressLabel={selection.parcel.address}
-          grossAV={selection.parcel.grossAV}
+          buckets={buckets}
           district={selection.district}
           homestead={selection.parcel.homestead}
           assessmentYear={selection.parcel.assessmentYear || null}
           propertyReportUrl={selection.parcel.propertyReportUrl || null}
         />
       )}
-      {selection?.kind === 'manual' && (
+      {selection?.kind === 'manual' && buckets && (
         <Results
           config={selection.config}
           addressLabel={null}
-          grossAV={selection.grossAV}
+          buckets={buckets}
           district={selection.district}
           homestead={true}
           assessmentYear={null}

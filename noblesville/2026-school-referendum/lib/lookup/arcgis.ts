@@ -1,3 +1,5 @@
+import type { CapClass } from '../tax/types';
+
 const ENDPOINT =
   'https://services5.arcgis.com/beYj0ONLvCt8qxHA/arcgis/rest/services/Parcels_Current_Open_Data/FeatureServer/0/query';
 
@@ -26,6 +28,19 @@ export interface ParcelCandidate {
   avLand: number;
   avImprove: number;
   deededAcres: number;
+}
+
+/**
+ * A ParcelCandidate enriched at API-response time with the cap-class
+ * inference (see lib/tax/indiana/capClass.ts). The lookup route computes
+ * this from the raw fields above; it is never cached in this shape (see
+ * app/api/lookup/route.ts) so a cache-hit and cache-miss response can never
+ * silently diverge.
+ */
+export interface EnrichedParcelCandidate extends ParcelCandidate {
+  capClass: CapClass;
+  capClassConfidence: 'high' | 'low';
+  capClassReason: string;
 }
 
 export function sanitizeSearchTerm(raw: string): string {

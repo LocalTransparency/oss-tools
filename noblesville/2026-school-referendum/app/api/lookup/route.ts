@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { sanitizeSearchTerm, type ParcelCandidate } from '@/lib/lookup/arcgis';
+import { sanitizeSearchTerm, type EnrichedParcelCandidate, type ParcelCandidate } from '@/lib/lookup/arcgis';
 import { COUNTY_SOURCES } from '@/lib/lookup/counties';
 import { getCached, setCached } from '@/lib/lookup/cache';
 import { inferCapClass } from '@/lib/tax/indiana/capClass';
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
 // (see lib/tax/indiana/capClass.ts) so the UI can pre-fill it. This is a
 // derived, deterministic view computed at response time — the cache above
 // still stores plain ParcelCandidate values, never the enriched shape.
-function withCapClassInference(c: ParcelCandidate) {
+function withCapClassInference(c: ParcelCandidate): EnrichedParcelCandidate {
   const inference = inferCapClass({
     homesteadCode: c.homesteadCode,
     propertyClass: c.propertyClass,

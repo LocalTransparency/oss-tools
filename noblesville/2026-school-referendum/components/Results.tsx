@@ -1,5 +1,4 @@
 import type { AvBuckets, BillBreakdown, CapClass, DistrictReferendumConfig, TaxDistrict } from '@/lib/tax/types';
-import { bucketsOf } from '@/lib/tax/engine';
 import { buildScenarios, computeAllScenarios } from '@/lib/tax/scenarios';
 import { CIRCUIT_BREAKER_RATES, HOMESTEAD_CREDIT } from '@/lib/tax/indiana/assumptions';
 import { fmtCents, fmtDelta, fmtDollars, fmtRate } from '@/lib/format';
@@ -7,7 +6,7 @@ import { fmtCents, fmtDelta, fmtDollars, fmtRate } from '@/lib/format';
 interface Props {
   config: DistrictReferendumConfig;
   addressLabel: string | null;
-  grossAV: number;
+  buckets: AvBuckets;
   district: TaxDistrict;
   homestead: boolean;
   assessmentYear: number | null;
@@ -37,6 +36,7 @@ function MathRows({ b, buckets, config }: { b: BillBreakdown; buckets: AvBuckets
     ['Gross assessed value', fmtCents(b.grossAV)],
     ['− Standard homestead deduction', fmtCents(b.standardDeduction)],
     ['− Supplemental homestead deduction', fmtCents(b.supplementalDeduction)],
+    ['− Cap 2 deduction (SEA 1 phase-in)', fmtCents(b.cap2Deduction)],
     ['= Net assessed value', fmtCents(b.netAV)],
     [`Non-referendum tax (rate ${b.nonReferendumRate.toFixed(4)} per $100)`, fmtCents(b.nonReferendumGross)],
     [circuitBreakerCapLabel(buckets), fmtCents(b.circuitBreakerCap)],
@@ -65,15 +65,12 @@ function MathRows({ b, buckets, config }: { b: BillBreakdown; buckets: AvBuckets
 }
 
 export default function Results({
-  config, addressLabel, grossAV, district, homestead, assessmentYear, propertyReportUrl,
+  config, addressLabel, buckets, district, homestead, assessmentYear, propertyReportUrl,
 }: Props) {
   const REFERENDUM = config.referendum;
   const SOURCES = config.sources;
   const SCENARIOS = buildScenarios(config);
   const committed = REFERENDUM.committed2027;
-  // TEMPORARY: routes the whole gross AV into cap class 1 (homestead). Task 12
-  // replaces this with the cap class inferred from parcel data.
-  const buckets = bucketsOf(grossAV, 1);
   const r = computeAllScenarios(buckets, district, config);
   const passVsFail = r.passCommitted.total - r.fail.total;
   const passVsFailMax = r.passMax.total - r.fail.total;

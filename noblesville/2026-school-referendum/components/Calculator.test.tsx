@@ -10,6 +10,11 @@ const candidate = {
   parcelNo: '160', stateParcelNo: '29', address: '1234 CONNER ST', city: 'Noblesville',
   zip: '46060', grossAV: 350000, assessmentYear: 2026, homestead: true,
   taxDistrictName: 'Noblesville City', propertyReportUrl: '',
+  homesteadCode: 1, propertyClass: '510', avLand: 0, avImprove: 0, deededAcres: 0.25,
+  // Cap-class fields the API route adds at response time (see app/api/lookup/route.ts).
+  capClass: 1 as const,
+  capClassConfidence: 'high' as const,
+  capClassReason: 'An active homestead deduction places this parcel in the state’s "Homestead (Owner-occupied residence)" class (1% cap).',
 };
 
 afterEach(() => vi.restoreAllMocks());

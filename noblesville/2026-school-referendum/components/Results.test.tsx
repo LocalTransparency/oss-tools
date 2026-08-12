@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import Results, { circuitBreakerCapLabel } from './Results';
-import { findDistrict } from '@/lib/tax/engine';
+import { bucketsOf, findDistrict } from '@/lib/tax/engine';
 import { NOBLESVILLE } from '@/lib/tax/indiana/districts/noblesville';
 import { CARMEL_CLAY } from '@/lib/tax/indiana/districts/carmel-clay';
 import type { DistrictReferendumConfig } from '@/lib/tax/types';
@@ -13,7 +13,7 @@ function renderCity(extra: Partial<React.ComponentProps<typeof Results>> = {}) {
     <Results
       config={NOBLESVILLE}
       addressLabel="1234 Conner St"
-      grossAV={350000}
+      buckets={bucketsOf(350000, 1)}
       district={city}
       homestead={true}
       assessmentYear={2026}
@@ -68,7 +68,7 @@ describe('<Results>', () => {
       <Results
         config={CARMEL_CLAY}
         addressLabel="1 Main St"
-        grossAV={500000}
+        buckets={bucketsOf(500000, 1)}
         district={carmelCarmel}
         homestead={true}
         assessmentYear={2026}
@@ -89,7 +89,7 @@ describe('<Results>', () => {
       <Results
         config={minimal}
         addressLabel={null}
-        grossAV={350000}
+        buckets={bucketsOf(350000, 1)}
         district={minimal.taxDistricts[0]}
         homestead={true}
         assessmentYear={null}
@@ -103,9 +103,38 @@ describe('<Results>', () => {
   });
 
   it('names the single class rate in the circuit breaker cap label when only one class carries gross AV', () => {
-    renderCity(); // grossAV routes entirely into cap class 1 (homestead) today
+    renderCity(); // fixture buckets route entirely into cap class 1 (homestead)
     // One row per rendered scenario (current, passCommitted, passMax, fail).
     expect(screen.getAllByText(/circuit breaker cap \(1% of gross AV\)/i)).toHaveLength(4);
+  });
+
+  it('reconciles gross minus every shown deduction to the shown net AV when cap-2 value is present', () => {
+    // A parcel split across cap 1 and cap 2 exercises the deduction this test
+    // guards: MathRows must render the cap-2 (SEA 1) deduction row, or gross
+    // minus the shown deductions no longer equals the shown net AV.
+    render(
+      <Results
+        config={NOBLESVILLE}
+        addressLabel={null}
+        buckets={{ cap1: 200000, cap2: 150000, cap3: 0 }}
+        district={city}
+        homestead={true}
+        assessmentYear={2026}
+        propertyReportUrl={null}
+      />,
+    );
+    const parse = (el: Element) => Number(el.textContent!.replace(/[^0-9.]/g, ''));
+    const rowValue = (label: string) =>
+      parse(screen.getAllByText(label)[0].closest('tr')!.querySelector('td:last-child')!);
+
+    const gross = rowValue('Gross assessed value');
+    const std = rowValue('− Standard homestead deduction');
+    const suppl = rowValue('− Supplemental homestead deduction');
+    const cap2Ded = rowValue('− Cap 2 deduction (SEA 1 phase-in)');
+    const net = rowValue('= Net assessed value');
+
+    expect(cap2Ded).toBeGreaterThan(0); // proves the row reflects a real, nonzero cap-2 deduction
+    expect(gross - std - suppl - cap2Ded).toBeCloseTo(net, 2);
   });
 });
 
