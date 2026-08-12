@@ -108,17 +108,27 @@ describe('POST /api/lookup — caching', () => {
 
     const first = await POST(req({ q: '99 cache ln' }));
     expect(first.status).toBe(200);
+    const firstBody = await first.json();
     // toMatchObject, not toEqual: the route adds derived capClass fields
     // (Task 11) to every candidate at response time, so the response is a
     // superset of the cached raw parcel data — that enrichment is exercised
     // separately below.
-    expect((await first.json()).candidates).toMatchObject(result);
+    expect(firstBody.candidates).toMatchObject(result);
     expect(mockSearch).toHaveBeenCalledTimes(1);
 
     const second = await POST(req({ q: '99 cache ln' }));
     expect(second.status).toBe(200);
-    expect((await second.json()).candidates).toMatchObject(result);
+    const secondBody = await second.json();
+    expect(secondBody.candidates).toMatchObject(result);
     expect(mockSearch).toHaveBeenCalledTimes(1); // still 1 — served from cache
+
+    // Guards against the cache-hit and cache-miss paths ever enriching a
+    // candidate differently — e.g. one branch's call to
+    // withCapClassInference changing, or the cache starting to store
+    // post-enrichment objects. Without this, a cached visitor and a fresh
+    // visitor could silently see different capClass values for the same
+    // parcel and every assertion above would still pass.
+    expect(secondBody).toEqual(firstBody);
   });
 
   it('does not cache an upstream failure, so the next identical query retries', async () => {
