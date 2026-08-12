@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { bucketsOf, computeNetAV, computeBill, currentReferendumTotal, findDistrict, nonReferendumRate, totalGrossAV } from './engine';
+import { assertBucketsConsistent, bucketsOf, computeNetAV, computeBill, currentReferendumTotal, findDistrict, nonReferendumRate, totalGrossAV } from './engine';
 import { buildScenarios } from './scenarios';
 import { NOBLESVILLE } from './indiana/districts/noblesville';
-import type { DistrictReferendumConfig } from './types';
+import type { CapClass, DistrictReferendumConfig } from './types';
 
 const SCENARIOS = buildScenarios(NOBLESVILLE);
 
@@ -43,6 +43,39 @@ describe('AvBuckets', () => {
 
   it('totalGrossAV sums the buckets', () => {
     expect(totalGrossAV({ cap1: 350000, cap2: 100000, cap3: 50000 })).toBe(500000);
+  });
+
+  // A parcel candidate crosses the API boundary as parsed JSON: bucketsOf's
+  // `capClass: CapClass` parameter type is a compile-time promise only, and a
+  // missing or corrupted field still reaches this function at runtime as
+  // undefined, null, 0, or some other value the 1/2/3 switch never matches.
+  // Falling through to {cap1:0, cap2:0, cap3:0} for those inputs is the bug
+  // this guards against: it prices a real parcel at $0 with no signal
+  // anything went wrong. bucketsOf must instead default to cap class 1
+  // (homestead) — this tool's assumption for its entire prior existence,
+  // covering ~84% of Hamilton County parcels, and visibly correctable via
+  // CapClassPanel's manual override.
+  it('missing or invalid capClass defaults to cap1 (homestead) instead of zeroing the parcel out', () => {
+    expect(bucketsOf(350000, undefined as unknown as CapClass)).toEqual({ cap1: 350000, cap2: 0, cap3: 0 });
+    expect(bucketsOf(350000, null as unknown as CapClass)).toEqual({ cap1: 350000, cap2: 0, cap3: 0 });
+    expect(bucketsOf(350000, 0 as unknown as CapClass)).toEqual({ cap1: 350000, cap2: 0, cap3: 0 });
+    expect(bucketsOf(350000, 4 as unknown as CapClass)).toEqual({ cap1: 350000, cap2: 0, cap3: 0 });
+    expect(bucketsOf(350000, '1' as unknown as CapClass)).toEqual({ cap1: 350000, cap2: 0, cap3: 0 });
+  });
+});
+
+describe('assertBucketsConsistent', () => {
+  it('throws when a positive grossAV produced all-zero buckets', () => {
+    expect(() => assertBucketsConsistent(350000, { cap1: 0, cap2: 0, cap3: 0 })).toThrow();
+  });
+
+  it('does not throw when grossAV is zero and buckets are zero (nothing to contradict)', () => {
+    expect(() => assertBucketsConsistent(0, { cap1: 0, cap2: 0, cap3: 0 })).not.toThrow();
+  });
+
+  it('does not throw for buckets that account for the gross AV', () => {
+    expect(() => assertBucketsConsistent(350000, { cap1: 350000, cap2: 0, cap3: 0 })).not.toThrow();
+    expect(() => assertBucketsConsistent(350000, { cap1: 0, cap2: 350000, cap3: 0 })).not.toThrow();
   });
 });
 

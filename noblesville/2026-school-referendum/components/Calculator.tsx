@@ -5,7 +5,7 @@ import type { EnrichedParcelCandidate } from '@/lib/lookup/arcgis';
 import { DISTRICTS } from '@/lib/tax/indiana/districts';
 import { resolveTaxDistrict } from '@/lib/tax/indiana/districts/resolve';
 import { nameUncoveredDistrict } from '@/lib/tax/indiana/counties/hamilton';
-import { bucketsOf } from '@/lib/tax/engine';
+import { assertBucketsConsistent, bucketsOf } from '@/lib/tax/engine';
 import type { CapClassInference } from '@/lib/tax/indiana/capClass';
 import type { AvBuckets, DistrictReferendumConfig, TaxDistrict } from '@/lib/tax/types';
 import { fmtDollars } from '@/lib/format';
@@ -101,9 +101,31 @@ export default function Calculator() {
       clearCapClassState();
       return;
     }
+    const parcelBuckets = bucketsOf(parcel.grossAV, parcel.capClass);
+    try {
+      // parcel is parsed JSON from /api/lookup — bucketsOf falls back to
+      // cap class 1 for a missing/invalid capClass rather than zeroing the
+      // parcel out (see engine.ts), so this should never throw in practice.
+      // It's asserted here anyway: a $0 estimate is worse than an error
+      // screen for a tool whose premise is a trustworthy number, so any
+      // future regression in bucket construction must fail loudly here
+      // instead of silently reaching the results screen.
+      assertBucketsConsistent(parcel.grossAV, parcelBuckets);
+    } catch {
+      setUncovered(null);
+      setSelection(null);
+      clearCapClassState();
+      setError(
+        "We couldn't verify this parcel's assessed-value breakdown, so no estimate is shown. " +
+          "You can enter your gross assessed value manually below — it's on your tax bill (Form TS-1) or the county property report.",
+      );
+      setManualOpen(true);
+      return;
+    }
     setUncovered(null);
+    setError(null);
     setSelection({ kind: 'parcel', parcel, config: resolved.config, district: resolved.district });
-    setBuckets(bucketsOf(parcel.grossAV, parcel.capClass));
+    setBuckets(parcelBuckets);
     setCapInference({
       capClass: parcel.capClass,
       confidence: parcel.capClassConfidence,
