@@ -24,7 +24,7 @@ export type ScenarioId = 'current' | 'passCommitted' | 'passMax' | 'fail';
 export interface ScenarioParams {
   id: ScenarioId;
   label: string;
-  payYear: 2026 | 2027;
+  payYear: number; // 2026 or 2027 for hand-picked scenarios; any 2026-2034 year when driving a projection
   standardDeduction: number;
   supplementalRate: number;        // fraction of post-standard remainder, e.g. 0.46
   referendumOperatingRate: number; // per $100 net AV
