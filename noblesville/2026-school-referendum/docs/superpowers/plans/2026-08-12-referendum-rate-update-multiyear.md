@@ -648,7 +648,7 @@ Add inside `referendum`, after `committed2027`:
         },
         source: SOURCES.districtCalculator,
         status: 'public-commitment',
-        note: 'Per-year operating rates hardcoded in the district\'s published calculator (retrieved 2026-08-12). Rises 4.0 cents per year through 2031, then holds; never reaches the authorized $0.57. Not legally binding — the board votes a rate annually.',
+        note: 'Per-year operating rates hardcoded in the district\'s published calculator (retrieved 2026-08-12). Rises 1.5 cents for 2027, then 4.0 cents per year through 2031, then holds; never reaches the authorized $0.57. Not legally binding — the board votes a rate annually.',
       },
       avGrowth: {
         value: {

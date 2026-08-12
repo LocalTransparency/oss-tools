@@ -33,7 +33,7 @@ block; the following values are transcribed from that file.
 |---|---|---|---|---|---|---|---|---|
 | 0.37 | 0.385 | 0.425 | 0.465 | 0.505 | 0.545 | 0.545 | 0.545 | 0.545 |
 
-The rate rises 4.0 cents per year through 2031, then holds. It never reaches the
+The rate rises 1.5 cents for 2027, then 4.0 cents per year through 2031, then holds. It never reaches the
 ballot-authorized maximum of $0.57.
 
 **Assumed assessed-value growth:** 5.3% for 2027, 3.5% each year 2028–2034. The file's
