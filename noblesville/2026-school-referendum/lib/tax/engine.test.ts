@@ -189,6 +189,18 @@ describe('computeBill — per-class circuit breaker', () => {
   it('a mixed parcel caps each class against its own gross AV', () => {
     const b = computeBill({ cap1: 350000, cap2: 100000, cap3: 0 }, city, SCENARIOS.passCommitted, NOBLESVILLE);
     expect(b.circuitBreakerCap).toBeCloseTo(350000 * 0.01 + 100000 * 0.02, 2); // 5,500
+    // Per-class credit: cap-1 liability (3,523.60) exceeds its 3,500 cap by 23.60;
+    // cap-2 liability is under its cap and contributes nothing. A blended cap
+    // (summed liability vs. summed cap) would wrongly let cap-2's headroom
+    // absorb cap-1's excess and give a credit of 0.
+    expect(b.circuitBreakerCredit).toBeCloseTo(23.6026, 2);
+  });
+
+  it("does not let one class's unused cap headroom shelter another class's liability", () => {
+    const b = computeBill({ cap1: 800000, cap2: 0, cap3: 200000 }, city, SCENARIOS.current, NOBLESVILLE);
+    // cap-1 liability exceeds its 1% cap; cap-3 is far under its 3% cap.
+    // Per class the cap-1 excess is credited on its own: a blended cap would credit $0.
+    expect(b.circuitBreakerCredit).toBeCloseTo(1497.31, 2);
   });
 
   it('the supplemental homestead credit is granted only on cap-1 liability', () => {
@@ -196,5 +208,44 @@ describe('computeBill — per-class circuit breaker', () => {
     const rental = computeBill(bucketsOf(350000, 2), city, SCENARIOS.current, NOBLESVILLE);
     expect(homestead.supplementalHomesteadCredit).toBeCloseTo(300, 2);
     expect(rental.supplementalHomesteadCredit).toBe(0);
+  });
+});
+
+describe('computeBill — binding 2%/3% caps (synthetic high-rate district)', () => {
+  // No real Hamilton County district's certified rate is high enough to bind
+  // the 2% or 3% caps: cap-2's effective rate tops out near 1.85% (2.1049% ×
+  // (1 − 0.12) at the highest certified rate) against a 2% cap, and the
+  // highest certified total rate (2.7455%) is still under the 3% cap. A
+  // synthetic 5.0 total rate is used here solely to exercise those two
+  // branches, which real rates cannot reach.
+  const highRate: DistrictReferendumConfig = {
+    id: 'highrate',
+    name: 'High Rate District',
+    county: 'Test',
+    sources: {},
+    referendum: {
+      proposedMax: { value: 0.25, source: 'https://example.com/ballot', status: 'confirmed' },
+    },
+    gisGate: /highrate/i,
+    taxDistricts: [{ name: 'High Rate Township', match: /township/i, totalRate2026: 5.0 }],
+  };
+  const highDistrict = highRate.taxDistricts[0];
+  const highScenarios = buildScenarios(highRate);
+
+  it('binds the 2% cap-2 cap', () => {
+    const b = computeBill({ cap1: 0, cap2: 100000, cap3: 0 }, highDistrict, highScenarios.current, highRate);
+    // pay-2026 cap-2 deduction is 6%: net AV 100000 × (1 − 0.06) = 94,000
+    expect(b.netAV).toBeCloseTo(94000, 2);
+    expect(b.nonReferendumGross).toBeCloseTo(4700, 2); // 94000 × 5.0%
+    expect(b.circuitBreakerCap).toBeCloseTo(2000, 2);  // 2% × 100000
+    expect(b.circuitBreakerCredit).toBeCloseTo(2700, 2);
+  });
+
+  it('binds the 3% cap-3 cap', () => {
+    const b = computeBill({ cap1: 0, cap2: 0, cap3: 100000 }, highDistrict, highScenarios.current, highRate);
+    expect(b.netAV).toBeCloseTo(100000, 2);            // cap-3 gets no deduction
+    expect(b.nonReferendumGross).toBeCloseTo(5000, 2);  // 100000 × 5.0%
+    expect(b.circuitBreakerCap).toBeCloseTo(3000, 2);   // 3% × 100000
+    expect(b.circuitBreakerCredit).toBeCloseTo(2000, 2);
   });
 });

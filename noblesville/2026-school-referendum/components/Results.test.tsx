@@ -104,7 +104,8 @@ describe('<Results>', () => {
 
   it('names the single class rate in the circuit breaker cap label when only one class carries gross AV', () => {
     renderCity(); // grossAV routes entirely into cap class 1 (homestead) today
-    expect(screen.getAllByText(/circuit breaker cap \(1% of gross AV\)/i).length).toBeGreaterThan(0);
+    // One row per rendered scenario (current, passCommitted, passMax, fail).
+    expect(screen.getAllByText(/circuit breaker cap \(1% of gross AV\)/i)).toHaveLength(4);
   });
 });
 

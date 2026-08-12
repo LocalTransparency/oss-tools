@@ -76,7 +76,7 @@ export interface BillBreakdown {
   netAV: number;
   nonReferendumRate: number;       // per $100
   nonReferendumGross: number;
-  circuitBreakerCap: number;       // 1% of gross AV
+  circuitBreakerCap: number;       // sum of each class's own cap (1%/2%/3% of that class's gross AV)
   circuitBreakerCredit: number;
   supplementalHomesteadCredit: number;
   nonReferendumNet: number;
