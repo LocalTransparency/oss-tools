@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildScenarios, computeAllScenarios } from './scenarios';
-import { findDistrict } from './engine';
+import { computeNetAV, findDistrict } from './engine';
 import { NOBLESVILLE } from './indiana/districts/noblesville';
 import type { DistrictReferendumConfig } from './types';
 
@@ -79,24 +79,35 @@ describe('computeAllScenarios', () => {
     expect(r.passCommitted.total).toBeLessThan(r.current.total);
   });
 
-  // Guards the methodology FAQ ("Why does my estimate go down if it passes?"),
-  // which claims: crossover near $440k AV, decrease above it, increase below it —
-  // at the district's committed $0.41 rate, for Noblesville City.
-  describe('methodology FAQ crossover claims (Noblesville City, committed $0.41 rate)', () => {
-    it('at $440k AV, pass-committed total ≈ current total (crossover point)', () => {
-      const r = computeAllScenarios(440000, city, NOBLESVILLE);
-      expect(r.passCommitted.total).toBeCloseTo(r.current.total, 0); // within $1
+  // Guards the methodology FAQ crossover claims at the district's committed
+  // $0.385 rate, for Noblesville City. Net AV is equal between pay-2026 and
+  // pay-2027 at exactly $120,000 gross AV:
+  //   0.60 × (AV − 48000) = 0.54 × (AV − 40000)  →  0.06 × AV = 7200  →  AV = 120000
+  // The total-bill crossover sits slightly above that, near $124,900, because
+  // the pay-2027 referendum rate ($0.465 combined) exceeds pay-2026's ($0.45).
+  describe('methodology FAQ crossover claims (Noblesville City, committed $0.385 rate)', () => {
+    it('net AV is identical under pay-2026 and pay-2027 at exactly $120,000 gross AV', () => {
+      const scenarios = buildScenarios(NOBLESVILLE);
+      const a = computeNetAV(120000, scenarios.current);
+      const b = computeNetAV(120000, scenarios.passCommitted);
+      expect(a.netAV).toBeCloseTo(b.netAV, 6);
+      expect(a.netAV).toBeCloseTo(43200, 6);
     });
 
-    it('at $500k AV, pass-committed decreases and pass-max increases vs. current', () => {
-      const r = computeAllScenarios(500000, city, NOBLESVILLE);
+    it('below the crossover ($120k AV), pass-committed still increases vs. current', () => {
+      const r = computeAllScenarios(120000, city, NOBLESVILLE);
+      expect(r.passCommitted.total).toBeGreaterThan(r.current.total);
+    });
+
+    it('above the crossover ($130k AV), pass-committed decreases vs. current', () => {
+      const r = computeAllScenarios(130000, city, NOBLESVILLE);
+      expect(r.passCommitted.total).toBeLessThan(r.current.total);
+    });
+
+    it('at $350k AV, pass-committed decreases while pass-max still increases', () => {
+      const r = computeAllScenarios(350000, city, NOBLESVILLE);
       expect(r.passCommitted.total).toBeLessThan(r.current.total);
       expect(r.passMax.total).toBeGreaterThan(r.current.total);
-    });
-
-    it('at $350k AV, pass-committed increases vs. current', () => {
-      const r = computeAllScenarios(350000, city, NOBLESVILLE);
-      expect(r.passCommitted.total).toBeGreaterThan(r.current.total);
     });
   });
 });

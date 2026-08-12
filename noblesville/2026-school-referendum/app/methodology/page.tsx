@@ -84,9 +84,11 @@ export default function Methodology() {
           - $333k cap-binding threshold: circuit breaker binds when non-referendum tax on pay-2027 net
             AV exceeds the 1% cap on gross AV:
               2.1049% × 0.54 × (AV − 40000) > 1% × AV  →  AV ≈ $333,000
-          - $440k pass-vs-current crossover: referendum tax at the committed 2027 rate on pay-2027 net
-            AV equals referendum tax at the current rate on pay-2026 net AV:
-              0.41% × 0.54 × (AV − 40000) = 0.37% × 0.60 × (AV − 48000)  →  AV ≈ $440,000
+          - $124.9k pass-vs-current crossover: referendum tax at the committed 2027 rate on pay-2027
+            net AV equals the pay-2026 bill when
+              0.465% × 0.54 × (AV − 40000) = 0.45% × 0.60 × (AV − 48000)  →  AV ≈ $124,900
+            Net assessed value alone is equal at exactly $120,000, where
+              0.60 × (AV − 48000) = 0.54 × (AV − 40000).
       */}
       <section className="space-y-2">
         <h2 className="text-lg font-medium">Why might my estimate go <em>down</em>{' '}if it passes?</h2>
@@ -114,8 +116,17 @@ export default function Methodology() {
           The exact crossover depends on the district and taxing-district rate. As a worked example, in
           Noblesville City&rsquo;s taxing district (at Noblesville&rsquo;s committed ${nobCommitted} rate) the 1% cap
           already binds above roughly $333,000 of assessed value, and the estimate dips below today&rsquo;s above
-          about $440,000. At a district&rsquo;s authorized <em>maximum</em>, the estimate generally increases at
-          every value — which is why, when a commitment exists, both figures are shown.
+          about $124,900. Above that, the estimate at the district&rsquo;s committed 2027 rate is generally
+          <em> lower</em>{' '}than the current bill, because SEA 1&rsquo;s larger supplemental deduction shrinks net
+          assessed value faster than the referendum rate rises. At a district&rsquo;s authorized <em>maximum</em>,
+          the estimate generally increases at every value — which is why, when a commitment exists, both figures
+          are shown.
+        </p>
+        <p className="text-sm">
+          This comparison holds non-referendum rates at their certified pay-2026 levels, which is
+          flagged <code>estimated</code> throughout. If non-referendum rates rise for pay-2027, the
+          decrease shown here shrinks or reverses. It also compares the whole tax bill; the
+          referendum line by itself rises at every rate above $0.37.
         </p>
       </section>
 
