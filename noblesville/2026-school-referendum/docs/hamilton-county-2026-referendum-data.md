@@ -8,6 +8,10 @@ November 3, 2026 operating referendum: **Noblesville, Hamilton Southeastern, Car
 Sheridan, and Westfield Washington**. Hamilton Heights School Corporation has **no** 2026
 referendum (absent from the DLGF list and the county rate sheet).
 
+Real examples below are identified by parcel number, not street address, matching the
+tool's own privacy posture and `docs/district-calculator-comparison.md`'s convention —
+please keep new examples consistent with this.
+
 ## Shared sources
 
 - **County rate sheet (current rates + certified district totals):** DLGF/Hamilton County
@@ -154,9 +158,14 @@ match**:
 | Noblesville City | `/city/i` | `Noblesville City` | ✅ |
 | Noblesville Township | `/township\|twp/i` | `Noblesville Twp` | ✅ |
 
-Real affected addresses (sampled): `13225 Tegler Dr` (Noblesville FC), `0 Greenfield Ave`
-(Nob Wayne), `14444 Herriman Blvd` (Noblesville SE). The existing test passed only because it
-fed fabricated inputs (`"Noblesville Delaware"` etc.) instead of the real GIS values.
+Real affected parcels (sampled, identified by parcel number — see convention note above):
+parcel `1311230000004401` (Noblesville FC), parcel `1211150000004000` (Nob Wayne — this
+one's street address is shared by 21 distinct parcels across four tax districts, a common
+pattern for platted-but-unaddressed Hamilton County lots, so it doesn't resolve 1:1 the way
+the other two do; `1211150000004000` is one of seven parcels at that address confirmed
+`Nob Wayne`), and parcel `1811190000007002` (Noblesville SE). The existing test passed only
+because it fed fabricated inputs (`"Noblesville Delaware"` etc.) instead of the real GIS
+values.
 
 **Fix:** match on the real `TAXDISTNAM` values, broaden the gisGate to admit `Nob Wayne`, and
 replace the test's fabricated inputs with real values.
