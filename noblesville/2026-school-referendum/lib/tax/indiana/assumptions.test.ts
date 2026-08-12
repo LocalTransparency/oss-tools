@@ -39,6 +39,31 @@ describe('DEDUCTIONS', () => {
       expect(['confirmed', 'estimated', 'public-commitment']).toContain(DEDUCTIONS[y].status);
     }
   });
+
+  // Promoted 2026-08-12 against a primary source: DLGF, "Report on Property Tax
+  // Exemptions, Deductions, and Abatements," April 30 2026. The standard deduction
+  // is enumerated there BY ASSESSMENT DATE and the supplemental deduction BY PAY
+  // YEAR; DEDUCTIONS is keyed by pay year, so the standard figures are shifted +1
+  // (assessment date N -> pay year N+1) while the supplemental figures line up as
+  // published, with no shift. See lib/tax/indiana/assumptions.ts for the full note.
+  it('2028-2034 are confirmed against the DLGF exemptions/deductions report', () => {
+    for (const y of [2028, 2029, 2030, 2031, 2032, 2033, 2034]) {
+      expect(DEDUCTIONS[y].status, `${y} status`).toBe('confirmed');
+    }
+  });
+
+  // Pins the exact out-year figures so a future edit can't quietly move a number
+  // while leaving `status: 'confirmed'` in place. These values must NOT change as
+  // part of the confirmed-status promotion — only status/source/note do.
+  it('pins the exact out-year deduction values', () => {
+    expect(DEDUCTIONS[2028].value).toEqual({ standard: 30000, supplementalRate: 0.52 });
+    expect(DEDUCTIONS[2029].value).toEqual({ standard: 20000, supplementalRate: 0.57 });
+    expect(DEDUCTIONS[2030].value).toEqual({ standard: 10000, supplementalRate: 0.62 });
+    expect(DEDUCTIONS[2031].value).toEqual({ standard: 0, supplementalRate: 0.667 });
+    expect(DEDUCTIONS[2032].value).toEqual({ standard: 0, supplementalRate: 0.667 });
+    expect(DEDUCTIONS[2033].value).toEqual({ standard: 0, supplementalRate: 0.667 });
+    expect(DEDUCTIONS[2034].value).toEqual({ standard: 0, supplementalRate: 0.667 });
+  });
 });
 
 describe('CAP2_AV_DEDUCTION', () => {
@@ -47,6 +72,15 @@ describe('CAP2_AV_DEDUCTION', () => {
     expect(CAP2_AV_DEDUCTION.value[2027]).toBeCloseTo(0.12, 6);
     expect(CAP2_AV_DEDUCTION.value[2031]).toBeCloseTo(0.334, 6);
     expect(CAP2_AV_DEDUCTION.value[2034]).toBeCloseTo(0.334, 6);
+  });
+
+  // The DLGF exemptions/deductions report that confirmed the standard and
+  // supplemental homestead schedules (above) does not cover this schedule — it was
+  // searched specifically and got zero hits. Must stay `estimated` with an honest
+  // note; do not let the sibling promotion imply this one was verified too.
+  it('remains estimated — not covered by the DLGF exemptions/deductions report', () => {
+    expect(CAP2_AV_DEDUCTION.status).toBe('estimated');
+    expect(CAP2_AV_DEDUCTION.note).toMatch(/pending primary-source verification/i);
   });
 });
 
