@@ -1,5 +1,16 @@
+// This file supersedes the pre-existing `statewide assumptions integrity` suite, which
+// asserted against the now-deleted `CIRCUIT_BREAKER_RATE` (singular) export. Its other
+// assertions — exact pay-2026/2027 deduction values, the supplemental-deduction cap rate,
+// the homestead credit, and source-URL checks on both — are retained below, in the
+// `statewide assumptions integrity` block, alongside the new multi-year coverage.
 import { describe, it, expect } from 'vitest';
-import { DEDUCTIONS, CAP2_AV_DEDUCTION, CIRCUIT_BREAKER_RATES } from './assumptions';
+import {
+  DEDUCTIONS,
+  CAP2_AV_DEDUCTION,
+  CIRCUIT_BREAKER_RATES,
+  SUPP_DEDUCTION_CAP_RATE,
+  HOMESTEAD_CREDIT,
+} from './assumptions';
 
 const YEARS = [2026, 2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034];
 
@@ -44,5 +55,26 @@ describe('CIRCUIT_BREAKER_RATES', () => {
     expect(CIRCUIT_BREAKER_RATES.value[1]).toBeCloseTo(0.01, 6);
     expect(CIRCUIT_BREAKER_RATES.value[2]).toBeCloseTo(0.02, 6);
     expect(CIRCUIT_BREAKER_RATES.value[3]).toBeCloseTo(0.03, 6);
+  });
+});
+
+describe('statewide assumptions integrity', () => {
+  it('pay-2026 and pay-2027 deduction values are exact', () => {
+    expect(DEDUCTIONS[2026].value).toEqual({ standard: 48000, supplementalRate: 0.40 });
+    expect(DEDUCTIONS[2027].value).toEqual({ standard: 40000, supplementalRate: 0.46 });
+  });
+
+  it('supplemental deduction cap is 75% of gross AV', () => {
+    expect(SUPP_DEDUCTION_CAP_RATE.value).toBe(0.75);
+  });
+
+  it('supplemental homestead credit is min(10% of liability, $300)', () => {
+    expect(HOMESTEAD_CREDIT.value).toEqual({ rate: 0.10, max: 300 });
+  });
+
+  it('every sourced statewide value cites an https source', () => {
+    expect(SUPP_DEDUCTION_CAP_RATE.source).toMatch(/^https:\/\//);
+    expect(HOMESTEAD_CREDIT.source).toMatch(/^https:\/\//);
+    expect(CIRCUIT_BREAKER_RATES.source).toMatch(/^https:\/\//);
   });
 });
