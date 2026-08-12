@@ -3,6 +3,26 @@ import { projectReferendumLine, projectionStats } from './projection';
 import { bucketsOf } from './engine';
 import { NOBLESVILLE } from './indiana/districts/noblesville';
 import { SHERIDAN } from './indiana/districts/sheridan';
+import type { DistrictReferendumConfig } from './types';
+
+const sourced = <T,>(value: T) => ({ value, source: 'test-fixture', status: 'confirmed' as const });
+
+/** Synthetic config whose schedule extends past 2034, where DEDUCTIONS has no entry. */
+const OUT_OF_RANGE_DISTRICT: DistrictReferendumConfig = {
+  id: 'synthetic',
+  name: 'Synthetic District',
+  county: 'Hamilton',
+  sources: {},
+  referendum: {
+    proposedMax: sourced(0.5),
+    projection: {
+      operatingRates: sourced({ 2026: 0.37, 2035: 0.40 }),
+      avGrowth: sourced({ 2035: 0.035 }),
+    },
+  },
+  gisGate: /synthetic/i,
+  taxDistricts: [],
+};
 
 const rows = projectReferendumLine(bucketsOf(350000, 1), NOBLESVILLE);
 const byYear = (y: number) => rows.find((r) => r.year === y)!;
@@ -42,6 +62,12 @@ describe('projectReferendumLine', () => {
   it('returns an empty array for a district with no published schedule', () => {
     expect(SHERIDAN.referendum.projection).toBeUndefined();
     expect(projectReferendumLine(bucketsOf(350000, 1), SHERIDAN)).toEqual([]);
+  });
+
+  it('throws a named error for a schedule year outside the DEDUCTIONS table', () => {
+    expect(() => projectReferendumLine(bucketsOf(350000, 1), OUT_OF_RANGE_DISTRICT)).toThrow(
+      /Missing DEDUCTIONS entry for pay year 2035.*lib\/tax\/indiana\/assumptions\.ts/,
+    );
   });
 });
 

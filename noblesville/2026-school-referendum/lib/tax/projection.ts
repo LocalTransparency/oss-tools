@@ -8,10 +8,14 @@ export interface ProjectionRow {
   grossAV: number;
   netAV: number;
   operatingRate: number;
+  /** Operating referendum tax only. This is the basis `projectionStats` uses for its four headline numbers. */
   operatingTax: number;
   debtRate: number;
+  /** Referendum debt tax. Levied through `debtEndYear` regardless of how the 2026 vote goes, so it is excluded from `projectionStats`. */
   debtTax: number;
+  /** Full referendum line for the year, INCLUDING debt (`operatingTax + debtTax`). NOT the basis of `projectionStats` — see that function's doc. */
   annual: number;
+  /** `annual / 12`. Full referendum line INCLUDING debt. NOT the basis of `projectionStats` — see that function's doc. */
   monthly: number;
 }
 
@@ -60,6 +64,9 @@ export function projectReferendumLine(
       cap3: buckets.cap3 * growthFactor,
     };
     const deductions = DEDUCTIONS[year];
+    if (!deductions) {
+      throw new Error(`Missing DEDUCTIONS entry for pay year ${year}; extend lib/tax/indiana/assumptions.ts before projecting it.`);
+    }
     const { netAV } = computeNetAV(grown, {
       id: 'passCommitted',
       label: '',
