@@ -1,4 +1,4 @@
-import { DEDUCTIONS, HOMESTEAD_CREDIT, SOURCES as STATE_SOURCES } from '@/lib/tax/indiana/assumptions';
+import { CAP2_AV_DEDUCTION, DEDUCTIONS, HOMESTEAD_CREDIT, SOURCES as STATE_SOURCES } from '@/lib/tax/indiana/assumptions';
 import { DISTRICTS } from '@/lib/tax/indiana/districts';
 import { NOBLESVILLE } from '@/lib/tax/indiana/districts/noblesville';
 import { fmtRate } from '@/lib/format';
@@ -8,6 +8,9 @@ export const metadata = { title: 'Methodology — Hamilton County School Referen
 
 // Shared source URLs are identical across the Hamilton districts; read them off one config.
 const SHARED = NOBLESVILLE.sources;
+
+/** Percent, rounded to one decimal — avoids floating-point noise like 3.5000000000000004. */
+const pct1 = (fraction: number) => Math.round(fraction * 1000) / 10;
 
 export default function Methodology() {
   const standard2026 = DEDUCTIONS[2026].value.standard.toLocaleString('en-US');
@@ -22,6 +25,25 @@ export default function Methodology() {
   const nobMax = fmtRate(nobRef.proposedMax.value);
   const nobCurrent = fmtRate(nobRef.currentOperating!.value);
   const nobCommitted = fmtRate(nobRef.committed2027!.value);
+
+  // The published multi-year projection (Noblesville is the only district with one).
+  const nobProjection = nobRef.projection!;
+  const nobProjectionYears = Object.keys(nobProjection.operatingRates.value).map(Number).sort((a, b) => a - b);
+  const nobBaseYear = nobProjectionYears[0];
+  const nobFirstProjectionYear = nobProjectionYears[1];
+  const nobFinalProjectionYear = nobProjectionYears[nobProjectionYears.length - 1];
+  const nobProjectionSource = nobProjection.operatingRates.source;
+  const nobFirstYearGrowthPct = pct1(nobProjection.avGrowth.value[nobFirstProjectionYear]).toFixed(1);
+  const nobLaterYearsGrowthPct = pct1(nobProjection.avGrowth.value[nobProjectionYears[2]]).toFixed(1);
+  const nobDebtEndLabel = nobRef.debtEndYear?.value ?? 'its final levy year';
+  const nobProjectedYearCount = nobProjectionYears.length - 1;
+
+  // The deduction schedules that feed the projection's out years carry their own
+  // status in config; read it here instead of asserting a fixed claim in prose, so
+  // this section stays accurate whether or not a later task promotes DEDUCTIONS'
+  // out years to `confirmed` (CAP2_AV_DEDUCTION is expected to remain `estimated`).
+  const nobDeductionOutYears = nobProjectionYears.filter((y) => y > nobFirstProjectionYear);
+  const nobDeductionsConfirmed = nobDeductionOutYears.every((y) => DEDUCTIONS[y].status === 'confirmed');
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-6">
@@ -154,6 +176,90 @@ export default function Methodology() {
           <li>Assessed values come from Hamilton County&rsquo;s public parcel data at lookup time and reflect the most recent assessment.</li>
           <li>This tool models owner-occupied homesteads only (1% cap class). Rentals, farms, and businesses follow different rules.</li>
           <li>Other deductions some households have (mortgage age 65+, veteran, etc.) are not modeled and would lower all columns.</li>
+        </ul>
+      </section>
+
+      <section id="projection" className="space-y-2 scroll-mt-4">
+        <h2 className="text-lg font-medium">The multi-year projection</h2>
+        <p className="text-sm">
+          Rates for {nobFirstProjectionYear}–{nobFinalProjectionYear} come from{' '}
+          {NOBLESVILLE.name}&rsquo;s referendum calculator. The district&rsquo;s referendum page
+          states the {nobFirstProjectionYear} rate but publishes no schedule beyond it; the
+          calculator is the source for the full {nobFirstProjectionYear}–{nobFinalProjectionYear}{' '}
+          run.{' '}
+          <a className="text-accent underline" href={nobProjectionSource}>Source</a>.
+        </p>
+        <p className="text-sm">
+          Assessed-value growth defaults to the district&rsquo;s assumption —{' '}
+          {nobFirstYearGrowthPct}% for {nobFirstProjectionYear}, stated as the median annual
+          growth of local existing residential parcels between the Hamilton County {nobBaseYear}
+          {' '}and {nobFirstProjectionYear} certified net assessed value data sets, and{' '}
+          {nobLaterYearsGrowthPct}% each year thereafter. You can change it in the tool.
+        </p>
+        <p className="text-sm">
+          {nobDeductionOutYears[0]}–{nobFinalProjectionYear} also depend on two SEA 1
+          phase-in schedules used to compute net assessed value. The homestead standard and
+          supplemental deduction schedule for those years is{' '}
+          {nobDeductionsConfirmed
+            ? 'confirmed against a primary DLGF source.'
+            : 'still marked estimated, pending primary-source verification.'}
+          {' '}The separate deduction against cap-2 (non-homestead residential and agricultural)
+          assessed value is marked <code>{CAP2_AV_DEDUCTION.status}</code>
+          {CAP2_AV_DEDUCTION.note ? <> — {CAP2_AV_DEDUCTION.note}</> : '.'}
+        </p>
+
+        <h3 className="font-medium">What the projection does not model</h3>
+        <ul className="list-disc space-y-1 pl-5 text-sm">
+          <li>
+            Non-referendum rates beyond pay-{nobFirstProjectionYear}. They are derived from the
+            certified pay-{nobBaseYear} total and held flat, which is flagged{' '}
+            <code>estimated</code>. Projecting them eight years out would let the weakest input
+            dominate every total, so the projection covers the referendum line only — the
+            same scope as the district&rsquo;s calculator.
+          </li>
+          <li>
+            The split of a single parcel&rsquo;s assessed value across the 1%, 2%, and 3% caps.
+            Indiana splits a parcel — a homestead on more than one acre is capped at 1% on
+            the dwelling plus one acre and 2% on the rest. Indiana&rsquo;s statutory PARCEL file
+            (50 IAC 26-20-4) publishes each parcel&rsquo;s assessed value broken out by cap class,
+            but Hamilton County&rsquo;s public parcel service — the live ArcGIS feed this
+            tool queries — does not expose that breakout. The tool infers a dominant class
+            from the total and lets you correct it.
+          </li>
+          <li>
+            Any change in the law after SEA 1 (2025), or any rate a future board actually adopts.
+            The board votes a rate every year.
+          </li>
+        </ul>
+
+        <h3 className="font-medium">How to read the four figures</h3>
+        <p className="text-sm">
+          The tool reports four statistics over the same series. Each describes the{' '}
+          <strong>referendum operating tax only</strong> — the separate debt rate is
+          excluded from all four because it stays on the bill through {nobDebtEndLabel} regardless
+          of whether this referendum passes. They answer different questions and differ
+          substantially, so each is defined exactly:
+        </p>
+        <ul className="list-disc space-y-1 pl-5 text-sm">
+          <li>
+            <strong>{nobFirstProjectionYear} change (operating tax only)</strong> —{' '}
+            {nobFirstProjectionYear}&rsquo;s monthly amount minus {nobBaseYear}&rsquo;s.
+          </li>
+          <li>
+            <strong>Average increase over {nobBaseYear} (operating tax only)</strong> — the
+            mean, across all {nobProjectedYearCount} projected years, of each year&rsquo;s excess
+            over {nobBaseYear}.
+          </li>
+          <li>
+            <strong>{nobFinalProjectionYear} increase (operating tax only)</strong> —{' '}
+            {nobFinalProjectionYear}&rsquo;s monthly amount minus {nobBaseYear}&rsquo;s.
+          </li>
+          <li>
+            <strong>Average year-over-year step (operating tax only)</strong> — the mean of
+            the successive year-to-year differences. This equals the {nobFinalProjectionYear}{' '}
+            increase divided by {nobProjectedYearCount}, and measures how fast the amount grows
+            rather than how far above {nobBaseYear} it sits.
+          </li>
         </ul>
       </section>
 
