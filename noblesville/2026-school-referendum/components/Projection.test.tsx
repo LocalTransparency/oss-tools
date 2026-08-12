@@ -9,8 +9,9 @@ const buckets = { cap1: 350000, cap2: 0, cap3: 0 };
 describe('Projection', () => {
   it('renders a row for every projected year', () => {
     render(<Projection buckets={buckets} config={NOBLESVILLE} />);
+    const table = screen.getByRole('table');
     for (const y of [2026, 2027, 2028, 2031, 2034]) {
-      expect(screen.getByText(String(y))).toBeInTheDocument();
+      expect(within(table).getByText(String(y))).toBeInTheDocument();
     }
   });
 

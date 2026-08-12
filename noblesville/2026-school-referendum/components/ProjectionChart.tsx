@@ -33,6 +33,13 @@ export function ProjectionChart({ rows }: { rows: ProjectionRow[] }) {
   if (rows.length === 0) return null;
 
   const values = rows.map((r) => r.operatingTax / 12);
+  // Zero-based baseline, deliberately: this chart sits next to a live ballot
+  // question, and truncating the y-axis to the data's own $55-71 range would
+  // make a real but modest month-to-month change look like a cliff. A
+  // zero-based axis is the anti-exaggeration choice, even though it compresses
+  // the series into roughly the bottom fifth of the plot height -- legibility
+  // of small wiggles is intentionally traded for not overstating the change.
+  // Do not "fix" this by tightening the axis to the data range.
   const min = Math.min(...values, 0);
   const max = Math.max(...values);
   const span = max - min || 1;
@@ -76,12 +83,6 @@ export function ProjectionChart({ rows }: { rows: ProjectionRow[] }) {
           />
         ))}
         {rows.map((r, i) => (
-          // Abbreviated ('26, not 2026): the full 4-digit year is already the
-          // table's row header text (Projection.tsx), and this chart sits
-          // right above that table. Matching it digit-for-digit here would
-          // make an assistive-tech-hidden decorative label collide with the
-          // table's real text content for no benefit to a sighted reader, who
-          // has the axis position for context anyway.
           <text
             key={r.year}
             x={x(i).toFixed(1)}
@@ -90,7 +91,7 @@ export function ProjectionChart({ rows }: { rows: ProjectionRow[] }) {
             fontSize="10"
             fill="var(--lt-muted)"
           >
-            &apos;{String(r.year).slice(-2)}
+            {r.year}
           </text>
         ))}
       </svg>
