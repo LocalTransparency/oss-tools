@@ -5,6 +5,7 @@ const candidate: ParcelCandidate = {
   parcelNo: '160', stateParcelNo: '29', address: '1234 CONNER ST', city: 'Noblesville',
   zip: '46060', grossAV: 350000, assessmentYear: 2026, homestead: true,
   taxDistrictName: 'Noblesville City', propertyReportUrl: '',
+  homesteadCode: 1, propertyClass: '510', avLand: 0, avImprove: 0, deededAcres: 0,
 };
 
 describe('lookup cache', () => {

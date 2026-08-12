@@ -3,7 +3,9 @@ const ENDPOINT =
 
 const OUT_FIELDS = [
   'PARCELNO', 'STPRCLNO', 'LOCADDRESS', 'LOCCITY', 'LOCZIP',
-  'AVTOTGROSS', 'AVTAXYR', 'HOMESTEAD', 'hmstd_code', 'TAXDISTCOD', 'TAXDISTNAM', 'PROPERTYREPORT',
+  'AVTOTGROSS', 'AVLAND', 'AVIMPROVE', 'AVTAXYR', 'DEEDACRES',
+  'HOMESTEAD', 'hmstd_code', 'PROPCLASS',
+  'TAXDISTCOD', 'TAXDISTNAM', 'PROPERTYREPORT',
 ].join(',');
 
 export interface ParcelCandidate {
@@ -17,6 +19,13 @@ export interface ParcelCandidate {
   homestead: boolean;
   taxDistrictName: string;
   propertyReportUrl: string;
+  // Cap-class inference inputs (see lib/tax/indiana/capClass.ts). These are
+  // raw county attributes, not a cap-class conclusion by themselves.
+  homesteadCode: number | null;
+  propertyClass: string;
+  avLand: number;
+  avImprove: number;
+  deededAcres: number;
 }
 
 export function sanitizeSearchTerm(raw: string): string {
@@ -106,6 +115,23 @@ function isHomestead(attrs: Record<string, unknown>): boolean {
   return false;
 }
 
+/**
+ * hmstd_code is an integer flag: 1 = active homestead, 0 = none. Hamilton
+ * County also publishes -1 on thousands of parcels; its meaning is
+ * unconfirmed with the county, so it is preserved verbatim here rather than
+ * collapsed into 0 — callers (see lib/tax/indiana/capClass.ts) lower their
+ * confidence on it instead of silently reading it as non-homestead.
+ */
+function homesteadCodeOf(attrs: Record<string, unknown>): number | null {
+  const code = attrs.hmstd_code;
+  if (typeof code === 'number') return code;
+  if (typeof code === 'string' && code.trim() !== '') {
+    const n = Number(code.trim());
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 export function parseResponse(json: unknown): ParcelCandidate[] {
   if (!json || typeof json !== 'object') return [];
   const features = (json as { features?: unknown }).features;
@@ -126,6 +152,11 @@ export function parseResponse(json: unknown): ParcelCandidate[] {
       homestead: isHomestead(attrs),
       taxDistrictName: String(attrs.TAXDISTNAM ?? ''),
       propertyReportUrl: String(attrs.PROPERTYREPORT ?? ''),
+      homesteadCode: homesteadCodeOf(attrs),
+      propertyClass: String(attrs.PROPCLASS ?? ''),
+      avLand: Number(attrs.AVLAND) || 0,
+      avImprove: Number(attrs.AVIMPROVE) || 0,
+      deededAcres: Number(attrs.DEEDACRES) || 0,
     }];
   });
 }

@@ -34,6 +34,7 @@ describe('POST /api/lookup', () => {
         parcelNo: '160', stateParcelNo: '29', address: '1234 CONNER ST', city: 'Noblesville',
         zip: '46060', grossAV: 350000, assessmentYear: 2026, homestead: true,
         taxDistrictName: 'Noblesville City', propertyReportUrl: 'https://example.test/r',
+        homesteadCode: 1, propertyClass: '510', avLand: 0, avImprove: 0, deededAcres: 0,
       },
     ]);
     const res = await POST(req({ q: '1234 conner st' }));
@@ -83,6 +84,7 @@ describe('POST /api/lookup — caching', () => {
       parcelNo: '999', stateParcelNo: '1', address: '99 CACHE LN', city: 'Noblesville',
       zip: '46060', grossAV: 200000, assessmentYear: 2026, homestead: true,
       taxDistrictName: 'Noblesville City', propertyReportUrl: '',
+      homesteadCode: 1, propertyClass: '510', avLand: 0, avImprove: 0, deededAcres: 0,
     },
   ];
 
