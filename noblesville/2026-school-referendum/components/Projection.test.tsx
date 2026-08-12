@@ -55,7 +55,7 @@ describe('operating-only labelling (must not silently regress)', () => {
   it('renders a distinct operating-only column in the table, separate from the combined total', () => {
     render(<Projection buckets={buckets} config={NOBLESVILLE} />);
     const table = screen.getByRole('table');
-    expect(within(table).getByText(/operating tax\/mo/i)).toBeInTheDocument();
+    expect(within(table).getByText(/referendum operating tax\/mo/i)).toBeInTheDocument();
     expect(within(table).getByText(/debt tax\/mo/i)).toBeInTheDocument();
     expect(within(table).getByText(/total referendum\/mo/i)).toBeInTheDocument();
   });
@@ -83,5 +83,61 @@ describe('operating-only labelling (must not silently regress)', () => {
     const row2033 = within(table).getByText('2033').closest('tr')!;
     expect(within(row2032).getByText('0.08')).toBeInTheDocument();
     expect(within(row2033).queryByText('0.08')).not.toBeInTheDocument();
+  });
+});
+
+// A label test alone can't catch a numbers bug: someone could swap the
+// operating-only column's source data for the combined (operating + debt)
+// figure while leaving every "(operating tax only)" label untouched, and the
+// tests above would stay green. These pin the actual rendered arithmetic for
+// a $350,000 cap-1 homestead, computed once via lib/tax/projectReferendumLine
+// directly (not re-derived here), so a swap like that fails loudly.
+describe('operating-vs-combined arithmetic reconciles (must not silently regress)', () => {
+  // Cell order in each <tbody> row, matching the JSX in Projection.tsx:
+  // [grossAV, netAV, operatingRate, operatingTax/mo, debtRate, debtTax/mo, total/mo, vsBase/mo]
+  const OPERATING_TAX_MO = 3;
+  const TOTAL_MO = 6;
+  const VS_BASE_MO = 7;
+
+  function dataCells(table: HTMLElement, year: number) {
+    const row = within(table).getByText(String(year)).closest('tr')!;
+    return within(row).getAllByRole('cell');
+  }
+
+  function statLine(label: RegExp) {
+    const stats = screen.getByRole('list', { name: /how to read these figures/i });
+    return within(stats).getByText(label).closest('li')!.textContent!;
+  }
+
+  const dollarsIn = (text: string) => Number(text.match(/\$[\d.]+/)![0].slice(1));
+
+  it("the 2027 row's operating-only cell and combined-total cell are different, correct figures", () => {
+    render(<Projection buckets={buckets} config={NOBLESVILLE} />);
+    const cells = dataCells(screen.getByRole('table'), 2027);
+    // Operating tax only ($56.92/mo) and the combined total including debt
+    // ($68.75/mo) differ by exactly the 2027 debt component — asserting both
+    // makes it impossible for one column to silently become an alias of the
+    // other.
+    expect(cells[OPERATING_TAX_MO].textContent).toBe('$56.92');
+    expect(cells[TOTAL_MO].textContent).toBe('$68.75');
+  });
+
+  it('the 2034 "vs 2026" cell equals the rendered 2034-increase statistic', () => {
+    render(<Projection buckets={buckets} config={NOBLESVILLE} />);
+    const vsBaseCell = dataCells(screen.getByRole('table'), 2034)[VS_BASE_MO].textContent!;
+    const finalYearStat = dollarsIn(statLine(/2034 increase/i));
+    expect(dollarsIn(vsBaseCell)).toBe(finalYearStat);
+    expect(finalYearStat).toBe(15.05);
+  });
+
+  it('the average year-over-year step equals the 2034 increase divided by 8', () => {
+    render(<Projection buckets={buckets} config={NOBLESVILLE} />);
+    const finalYearIncrease = dollarsIn(statLine(/2034 increase/i));
+    const averageStep = dollarsIn(statLine(/average year-over-year step/i));
+    // Each figure is independently rounded to the cent for display, so the
+    // identity holds only to within a cent here even though the underlying
+    // unrounded numbers satisfy it exactly (see lib/tax/projection.test.ts).
+    expect(averageStep * 8).toBeCloseTo(finalYearIncrease, 1);
+    expect(averageStep).toBe(1.88);
   });
 });

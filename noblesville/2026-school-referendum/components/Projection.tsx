@@ -83,9 +83,9 @@ export function Projection({ buckets, config }: Props) {
       className="space-y-4 rounded-md border border-border bg-surface p-4"
     >
       <div>
-        <h3 id="projection-heading" className="font-medium">
+        <h2 id="projection-heading" className="font-medium">
           The referendum line, {firstProjectedYear}&ndash;{finalYear}
-        </h3>
+        </h2>
         <p className="mt-1 text-sm">
           Rates are {config.name}&rsquo;s published schedule. Assessed-value growth defaults to the{' '}
           <strong>district&#39;s assumption</strong> of {firstYearDefault.toFixed(1)}% for{' '}
@@ -145,7 +145,7 @@ export function Projection({ buckets, config }: Props) {
               <th scope="col" className="py-1 pr-3">Gross AV</th>
               <th scope="col" className="py-1 pr-3">Net AV</th>
               <th scope="col" className="py-1 pr-3">Operating rate</th>
-              <th scope="col" className="py-1 pr-3">Operating tax/mo<br /><span className="font-normal text-muted">(operating only)</span></th>
+              <th scope="col" className="py-1 pr-3">Referendum operating tax/mo<br /><span className="font-normal text-muted">(operating only)</span></th>
               <th scope="col" className="py-1 pr-3">Debt rate</th>
               <th scope="col" className="py-1 pr-3">Debt tax/mo<br /><span className="font-normal text-muted">(excluded from stats)</span></th>
               <th scope="col" className="py-1 pr-3">Total referendum/mo</th>
