@@ -10,6 +10,8 @@ const SOURCES = {
   districtReferendumPage: 'https://www.noblesvilleschools.org/referendum',
   districtAnnouncement2026_08_12:
     'https://www.noblesvilleschools.org/referendum',
+  districtCalculator:
+    'https://noblesvilleschoolsorg.finalsite.com/uploaded/NoblesvilleSchools_ReferendumCalculator.html',
 } as const;
 
 export const NOBLESVILLE: DistrictReferendumConfig = {
@@ -37,6 +39,26 @@ export const NOBLESVILLE: DistrictReferendumConfig = {
     debtEndYear: {
       value: 2032, source: SOURCES.districtReferendumPage, status: 'confirmed',
       note: 'Final levy year for the 2010 referendum debt.',
+    },
+    projection: {
+      operatingRates: {
+        value: {
+          2026: 0.37, 2027: 0.385, 2028: 0.425, 2029: 0.465,
+          2030: 0.505, 2031: 0.545, 2032: 0.545, 2033: 0.545, 2034: 0.545,
+        },
+        source: SOURCES.districtCalculator,
+        status: 'public-commitment',
+        note: 'Per-year operating rates hardcoded in the district\'s published calculator (retrieved 2026-08-12). Rises 4.0 cents per year through 2031, then holds; never reaches the authorized $0.57. Not legally binding — the board votes a rate annually.',
+      },
+      avGrowth: {
+        value: {
+          2027: 0.053, 2028: 0.035, 2029: 0.035, 2030: 0.035,
+          2031: 0.035, 2032: 0.035, 2033: 0.035, 2034: 0.035,
+        },
+        source: SOURCES.districtCalculator,
+        status: 'public-commitment',
+        note: 'District assumption (retrieved 2026-08-12): 5.3% for 2027, stated as the median annual growth of local existing residential parcels between the Hamilton County 2026 and 2027 certified net AV data sets; 3.5% each year thereafter.',
+      },
     },
     explainer:
       'Noblesville Schools’ 2026 question replaces its current operating referendum ($0.37) with a new operating rate of up to $0.57 (the district publicly committed to $0.385 for 2027 on 2026-08-12). A separate referendum debt rate ($0.08, levied through 2032) stays on your bill either way — it is not part of this vote.',

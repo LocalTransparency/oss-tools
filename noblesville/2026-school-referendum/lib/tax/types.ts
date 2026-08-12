@@ -42,6 +42,15 @@ export interface DistrictReferendumConfig {
     debt?: Sourced<number>;             // optional — existing referendum debt, if any
     debtEndYear?: Sourced<number>;
     committed2027?: Sourced<number>;    // optional — voluntary public commitment
+    /**
+     * A district's own published multi-year plan, when one exists. Optional:
+     * the other Hamilton County districts have published no schedule, and the
+     * multi-year view renders only where this is present.
+     */
+    projection?: {
+      operatingRates: Sourced<Record<number, number>>; // pay year → operating rate per $100
+      avGrowth: Sourced<Record<number, number>>;       // pay year → assumed AV growth, as a fraction
+    };
     // Plain-language summary of what THIS district's 2026 question actually does —
     // e.g. Carmel repeals BOTH its referendums, while HSE keeps its debt. Rendered
     // above the scenarios so the situation is clear before reading the numbers.

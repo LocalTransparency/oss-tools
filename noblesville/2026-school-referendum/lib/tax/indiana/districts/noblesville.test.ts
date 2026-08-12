@@ -41,3 +41,42 @@ describe('Noblesville district data integrity', () => {
     expect(NOBLESVILLE.referendum.committed2027!.source).toMatch(/^https?:\/\//);
   });
 });
+
+const projection = NOBLESVILLE.referendum.projection!;
+
+describe('NOBLESVILLE projection', () => {
+  it('carries the district\'s published operating rate for every year 2026-2034', () => {
+    const expected: Record<number, number> = {
+      2026: 0.37, 2027: 0.385, 2028: 0.425, 2029: 0.465,
+      2030: 0.505, 2031: 0.545, 2032: 0.545, 2033: 0.545, 2034: 0.545,
+    };
+    expect(projection.operatingRates.value).toEqual(expected);
+  });
+
+  it('carries the district\'s AV growth assumption', () => {
+    expect(projection.avGrowth.value[2027]).toBeCloseTo(0.053, 6);
+    for (const y of [2028, 2029, 2030, 2031, 2032, 2033, 2034]) {
+      expect(projection.avGrowth.value[y]).toBeCloseTo(0.035, 6);
+    }
+  });
+
+  it('never exceeds the ballot-authorized maximum', () => {
+    for (const rate of Object.values(projection.operatingRates.value)) {
+      expect(rate).toBeLessThanOrEqual(NOBLESVILLE.referendum.proposedMax.value);
+    }
+  });
+
+  // Drift guard: the schedule and the standalone commitment figures describe
+  // the same facts. If the district revises one and not the other, fail here
+  // rather than let the site disagree with itself.
+  it('agrees with committed2027 and currentOperating', () => {
+    expect(projection.operatingRates.value[2027]).toBe(NOBLESVILLE.referendum.committed2027!.value);
+    expect(projection.operatingRates.value[2026]).toBe(NOBLESVILLE.referendum.currentOperating!.value);
+  });
+
+  it('is sourced and status-flagged', () => {
+    expect(projection.operatingRates.source).toMatch(/^https:\/\//);
+    expect(projection.operatingRates.status).toBe('public-commitment');
+    expect(projection.avGrowth.status).toBe('public-commitment');
+  });
+});
