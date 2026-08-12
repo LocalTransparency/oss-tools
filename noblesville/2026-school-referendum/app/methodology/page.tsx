@@ -84,11 +84,15 @@ export default function Methodology() {
           - $333k cap-binding threshold: circuit breaker binds when non-referendum tax on pay-2027 net
             AV exceeds the 1% cap on gross AV:
               2.1049% × 0.54 × (AV − 40000) > 1% × AV  →  AV ≈ $333,000
-          - $124.9k pass-vs-current crossover: referendum tax at the committed 2027 rate on pay-2027
-            net AV equals the pay-2026 bill when
-              0.465% × 0.54 × (AV − 40000) = 0.45% × 0.60 × (AV − 48000)  →  AV ≈ $124,900
-            Net assessed value alone is equal at exactly $120,000, where
-              0.60 × (AV − 48000) = 0.54 × (AV − 40000).
+          - Net assessed value alone is equal at exactly $120,000, a closed-form identity:
+              0.60 × (AV − 48000) = 0.54 × (AV − 40000)  →  0.06 × AV = 7200  →  AV = 120,000
+          - $124.9k pass-vs-current total-bill crossover: computed, not solved in closed form — unlike
+            the two thresholds above, the total bill also depends on the non-referendum tax, the
+            circuit-breaker credit, and the supplemental homestead credit, all of which shift with net
+            assessed value too, so there is no simple equation to solve. It sits slightly above the
+            $120,000 net-AV crossover because the pay-2027 combined referendum rate ($0.465) exceeds
+            pay-2026's ($0.45). Guarded to the $120k-$130k bracket by the tests in
+            lib/tax/scenarios.test.ts.
       */}
       <section className="space-y-2">
         <h2 className="text-lg font-medium">Why might my estimate go <em>down</em>{' '}if it passes?</h2>

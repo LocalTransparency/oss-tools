@@ -109,5 +109,16 @@ describe('computeAllScenarios', () => {
       expect(r.passCommitted.total).toBeLessThan(r.current.total);
       expect(r.passMax.total).toBeGreaterThan(r.current.total);
     });
+
+    // Pins the page's stated total-bill crossover (~$124,900) to the $120k-$130k bracket.
+    // There's no closed form for this value (unlike the $120,000 net-AV identity above) because
+    // the non-referendum tax, circuit-breaker credit, and supplemental homestead credit all shift
+    // with net assessed value too — so this bracket is the guard against the page copy drifting.
+    it('pins the total-bill crossover to the $120k-$130k bracket', () => {
+      const below = computeAllScenarios(120000, city, NOBLESVILLE);
+      const above = computeAllScenarios(130000, city, NOBLESVILLE);
+      expect(below.passCommitted.total).toBeGreaterThan(below.current.total);
+      expect(above.passCommitted.total).toBeLessThan(above.current.total);
+    });
   });
 });
