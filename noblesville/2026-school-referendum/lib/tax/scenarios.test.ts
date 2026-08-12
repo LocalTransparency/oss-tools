@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildScenarios, computeAllScenarios } from './scenarios';
-import { computeNetAV, findDistrict } from './engine';
+import { bucketsOf, computeNetAV, findDistrict } from './engine';
 import { NOBLESVILLE } from './indiana/districts/noblesville';
 import type { DistrictReferendumConfig } from './types';
 
@@ -88,8 +88,8 @@ describe('computeAllScenarios', () => {
   describe('methodology FAQ crossover claims (Noblesville City, committed $0.385 rate)', () => {
     it('net AV is identical under pay-2026 and pay-2027 at exactly $120,000 gross AV', () => {
       const scenarios = buildScenarios(NOBLESVILLE);
-      const a = computeNetAV(120000, scenarios.current);
-      const b = computeNetAV(120000, scenarios.passCommitted);
+      const a = computeNetAV(bucketsOf(120000, 1), scenarios.current);
+      const b = computeNetAV(bucketsOf(120000, 1), scenarios.passCommitted);
       expect(a.netAV).toBeCloseTo(b.netAV, 6);
       expect(a.netAV).toBeCloseTo(43200, 6);
     });

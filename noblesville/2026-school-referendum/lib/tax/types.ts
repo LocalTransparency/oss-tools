@@ -12,6 +12,13 @@ export interface Sourced<T> {
   note?: string;
 }
 
+/** Gross assessed value split by constitutional cap class. */
+export interface AvBuckets {
+  cap1: number; // homestead
+  cap2: number; // other residential + agricultural land
+  cap3: number; // all other real and personal property
+}
+
 export type ScenarioId = 'current' | 'passCommitted' | 'passMax' | 'fail';
 
 export interface ScenarioParams {
@@ -65,6 +72,7 @@ export interface BillBreakdown {
   grossAV: number;
   standardDeduction: number;
   supplementalDeduction: number;
+  cap2Deduction: number;
   netAV: number;
   nonReferendumRate: number;       // per $100
   nonReferendumGross: number;

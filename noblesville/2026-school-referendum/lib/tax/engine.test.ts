@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeNetAV, computeBill, currentReferendumTotal, findDistrict, nonReferendumRate } from './engine';
+import { bucketsOf, computeNetAV, computeBill, currentReferendumTotal, findDistrict, nonReferendumRate, totalGrossAV } from './engine';
 import { buildScenarios } from './scenarios';
 import { NOBLESVILLE } from './indiana/districts/noblesville';
 import type { DistrictReferendumConfig } from './types';
@@ -8,27 +8,68 @@ const SCENARIOS = buildScenarios(NOBLESVILLE);
 
 describe('computeNetAV', () => {
   it('pay-2026: $350k home → (350000-48000) × (1-0.40) = 181,200', () => {
-    const r = computeNetAV(350000, SCENARIOS.current);
+    const r = computeNetAV(bucketsOf(350000, 1), SCENARIOS.current);
     expect(r.standardDeduction).toBe(48000);
     expect(r.supplementalDeduction).toBeCloseTo(120800, 2);
     expect(r.netAV).toBeCloseTo(181200, 2);
   });
 
   it('pay-2027: $350k home → (350000-40000) × (1-0.46) = 167,400 (ballot-language basis)', () => {
-    const r = computeNetAV(350000, SCENARIOS.passMax);
+    const r = computeNetAV(bucketsOf(350000, 1), SCENARIOS.passMax);
     expect(r.netAV).toBeCloseTo(167400, 2);
   });
 
   it('gross AV below the standard deduction → net AV 0, no negative values', () => {
-    const r = computeNetAV(30000, SCENARIOS.current);
-    expect(r.standardDeduction).toBe(48000);
+    const r = computeNetAV(bucketsOf(30000, 1), SCENARIOS.current);
+    // A deduction cannot exceed the value it applies to: a $30,000 home caps
+    // the $48,000 standard deduction at what's actually there.
+    expect(r.standardDeduction).toBe(30000);
     expect(r.supplementalDeduction).toBe(0);
     expect(r.netAV).toBe(0);
   });
 
   it('supplemental deduction never exceeds 75% of gross AV (cannot bind with current params, but enforced)', () => {
-    const r = computeNetAV(1000000, SCENARIOS.passCommitted);
+    const r = computeNetAV(bucketsOf(1000000, 1), SCENARIOS.passCommitted);
     expect(r.supplementalDeduction).toBeLessThanOrEqual(0.75 * 1000000);
+  });
+});
+
+describe('AvBuckets', () => {
+  it('bucketsOf routes the whole value to the named class', () => {
+    expect(bucketsOf(350000, 1)).toEqual({ cap1: 350000, cap2: 0, cap3: 0 });
+    expect(bucketsOf(350000, 2)).toEqual({ cap1: 0, cap2: 350000, cap3: 0 });
+    expect(bucketsOf(350000, 3)).toEqual({ cap1: 0, cap2: 0, cap3: 350000 });
+  });
+
+  it('totalGrossAV sums the buckets', () => {
+    expect(totalGrossAV({ cap1: 350000, cap2: 100000, cap3: 50000 })).toBe(500000);
+  });
+});
+
+describe('computeNetAV — cap-class behavior', () => {
+  it('homestead deductions apply to cap1 only (parity with the pre-bucket engine)', () => {
+    const r = computeNetAV(bucketsOf(350000, 1), SCENARIOS.current);
+    expect(r.netAV).toBeCloseTo(181200, 2);
+    expect(r.cap2Deduction).toBe(0);
+  });
+
+  it('cap2 AV gets the phased Cap 2 deduction and no homestead deduction', () => {
+    // pay-2027 Cap 2 deduction is 12%: 100000 × (1 − 0.12) = 88,000
+    const r = computeNetAV({ cap1: 0, cap2: 100000, cap3: 0 }, SCENARIOS.passCommitted);
+    expect(r.standardDeduction).toBe(0);
+    expect(r.supplementalDeduction).toBe(0);
+    expect(r.cap2Deduction).toBeCloseTo(12000, 2);
+    expect(r.netAV).toBeCloseTo(88000, 2);
+  });
+
+  it('cap3 AV receives no deduction at all', () => {
+    const r = computeNetAV({ cap1: 0, cap2: 0, cap3: 100000 }, SCENARIOS.passCommitted);
+    expect(r.netAV).toBeCloseTo(100000, 2);
+  });
+
+  it('mixed parcel sums the three treatments', () => {
+    const r = computeNetAV({ cap1: 350000, cap2: 100000, cap3: 50000 }, SCENARIOS.passCommitted);
+    expect(r.netAV).toBeCloseTo(167400 + 88000 + 50000, 2);
   });
 });
 

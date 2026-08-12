@@ -1,5 +1,5 @@
-import type { BillBreakdown, DistrictReferendumConfig, ScenarioParams, TaxDistrict } from './types';
-import { CIRCUIT_BREAKER_RATE, HOMESTEAD_CREDIT, SUPP_DEDUCTION_CAP_RATE } from './indiana/assumptions';
+import type { AvBuckets, BillBreakdown, CapClass, DistrictReferendumConfig, ScenarioParams, TaxDistrict } from './types';
+import { CAP2_AV_DEDUCTION, CIRCUIT_BREAKER_RATES, HOMESTEAD_CREDIT, SUPP_DEDUCTION_CAP_RATE } from './indiana/assumptions';
 
 /** Resolve an ArcGIS TAXDISTNAM to one of the config's tax districts (gisGate filters first). */
 export function findDistrict(config: DistrictReferendumConfig, taxDistrictName: string): TaxDistrict | null {
@@ -17,14 +17,46 @@ export function nonReferendumRate(config: DistrictReferendumConfig, d: TaxDistri
   return d.totalRate2026 - currentReferendumTotal(config);
 }
 
-export function computeNetAV(grossAV: number, s: ScenarioParams) {
-  const afterStandard = Math.max(0, grossAV - s.standardDeduction);
+/** Route a single gross AV entirely to one cap class. */
+export function bucketsOf(grossAV: number, capClass: CapClass): AvBuckets {
+  return {
+    cap1: capClass === 1 ? grossAV : 0,
+    cap2: capClass === 2 ? grossAV : 0,
+    cap3: capClass === 3 ? grossAV : 0,
+  };
+}
+
+export function totalGrossAV(b: AvBuckets): number {
+  return b.cap1 + b.cap2 + b.cap3;
+}
+
+/**
+ * Net AV by cap class. Homestead standard + supplemental deductions apply to
+ * cap-1 AV only; the SEA 1 Cap 2 deduction applies to cap-2 AV; cap-3 AV gets
+ * nothing. Each bucket is floored at zero independently.
+ */
+export function computeNetAV(buckets: AvBuckets, s: ScenarioParams) {
+  const standardDeduction = Math.min(buckets.cap1, s.standardDeduction);
+  const afterStandard = Math.max(0, buckets.cap1 - standardDeduction);
   const supplementalDeduction = Math.min(
     afterStandard * s.supplementalRate,
-    grossAV * SUPP_DEDUCTION_CAP_RATE.value,
+    buckets.cap1 * SUPP_DEDUCTION_CAP_RATE.value,
   );
-  const netAV = Math.max(0, afterStandard - supplementalDeduction);
-  return { standardDeduction: s.standardDeduction, supplementalDeduction, netAV };
+  const cap1Net = Math.max(0, afterStandard - supplementalDeduction);
+
+  const cap2Rate = CAP2_AV_DEDUCTION.value[s.payYear] ?? 0;
+  const cap2Deduction = buckets.cap2 * cap2Rate;
+  const cap2Net = Math.max(0, buckets.cap2 - cap2Deduction);
+
+  const cap3Net = Math.max(0, buckets.cap3);
+
+  return {
+    standardDeduction,
+    supplementalDeduction,
+    cap2Deduction,
+    netAV: cap1Net + cap2Net + cap3Net,
+    byClass: { 1: cap1Net, 2: cap2Net, 3: cap3Net } as Record<CapClass, number>,
+  };
 }
 
 export function computeBill(
