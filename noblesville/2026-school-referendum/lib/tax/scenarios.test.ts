@@ -16,12 +16,12 @@ describe('buildScenarios', () => {
     });
     expect(scenarios.passCommitted).toMatchObject({
       payYear: 2027, standardDeduction: 40000, supplementalRate: 0.46,
-      referendumOperatingRate: 0.41, referendumDebtRate: 0.08,
+      referendumOperatingRate: 0.385, referendumDebtRate: 0.08,
     });
     expect(scenarios.passMax.referendumOperatingRate).toBe(0.57);
     expect(scenarios.fail).toMatchObject({ referendumOperatingRate: 0, referendumDebtRate: 0.08 });
     // committed vs max differ for Noblesville — guards against swapping the interpolated values
-    expect(scenarios.passCommitted.label).toBe('If it passes — committed 2027 rate ($0.41)');
+    expect(scenarios.passCommitted.label).toBe('If it passes — committed 2027 rate ($0.385)');
     expect(scenarios.passMax.label).toBe('If it passes — authorized maximum ($0.57)');
   });
 
@@ -57,14 +57,14 @@ describe('computeAllScenarios', () => {
   it('returns all four scenarios for a $350k city home', () => {
     const r = computeAllScenarios(350000, city, NOBLESVILLE);
     expect(r.current.total).toBeCloseTo(4015.4, 2);
-    expect(r.passCommitted.total).toBeCloseTo(4020.26, 2);
+    expect(r.passCommitted.total).toBeCloseTo(3978.41, 2);
     expect(r.passMax.total).toBeCloseTo(4288.1, 2);
     expect(r.fail.total).toBeCloseTo(3333.92, 2);
   });
 
   it('pass-vs-fail delta at committed rate = referendum operating tax ($686.34 for $350k)', () => {
     const r = computeAllScenarios(350000, city, NOBLESVILLE);
-    expect(r.passCommitted.total - r.fail.total).toBeCloseTo(686.34, 2); // 167400 × 0.41%
+    expect(r.passCommitted.total - r.fail.total).toBeCloseTo(644.49, 2); // 167400 × 0.385%
   });
 
   it('pass-vs-fail delta at max rate matches the ballot figure ($954.18)', () => {
@@ -75,7 +75,7 @@ describe('computeAllScenarios', () => {
   it('township $350k home pays LESS under pass than currently (net AV shrinks, cap not binding)', () => {
     const r = computeAllScenarios(350000, township, NOBLESVILLE);
     expect(r.current.total).toBeCloseTo(3089.39, 2);
-    expect(r.passCommitted.total).toBeCloseTo(2921.06, 2);
+    expect(r.passCommitted.total).toBeCloseTo(2879.21, 2);
     expect(r.passCommitted.total).toBeLessThan(r.current.total);
   });
 

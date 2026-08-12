@@ -1,7 +1,7 @@
 import type { BillBreakdown, DistrictReferendumConfig, TaxDistrict } from '@/lib/tax/types';
 import { buildScenarios, computeAllScenarios } from '@/lib/tax/scenarios';
 import { CIRCUIT_BREAKER_RATE, HOMESTEAD_CREDIT } from '@/lib/tax/indiana/assumptions';
-import { fmtCents, fmtDelta, fmtDollars } from '@/lib/format';
+import { fmtCents, fmtDelta, fmtDollars, fmtRate } from '@/lib/format';
 
 interface Props {
   config: DistrictReferendumConfig;
@@ -29,7 +29,7 @@ function MathRows({ b, config }: { b: BillBreakdown; config: DistrictReferendumC
   ];
   if (debt) {
     const through = debtEndYear ? `, through ${debtEndYear.value}` : '';
-    rows.push([`+ School referendum debt tax ($${debt.value.toFixed(2)}${through})`, fmtCents(b.referendumDebtTax)]);
+    rows.push([`+ School referendum debt tax ($${fmtRate(debt.value)}${through})`, fmtCents(b.referendumDebtTax)]);
   }
   rows.push(['Total estimated bill', fmtCents(b.total)]);
   return (
@@ -104,8 +104,8 @@ export default function Results({
           <div className="text-lg font-mono tabular-nums">{fmtDollars(r.passCommitted.total)}</div>
           <div className="mt-1 text-xs text-muted">
             {committed
-              ? <>at {config.name}&rsquo;s committed 2027 rate (${committed.value.toFixed(2)}); up to {fmtDollars(r.passMax.total)} if the full authorized ${REFERENDUM.proposedMax.value.toFixed(2)} were levied</>
-              : <>at the authorized maximum rate (${REFERENDUM.proposedMax.value.toFixed(2)})</>}
+              ? <>at {config.name}&rsquo;s committed 2027 rate (${fmtRate(committed.value)}); up to {fmtDollars(r.passMax.total)} if the full authorized ${fmtRate(REFERENDUM.proposedMax.value)} were levied</>
+              : <>at the authorized maximum rate (${fmtRate(REFERENDUM.proposedMax.value)})</>}
           </div>
           <p className="mt-2 text-xs text-muted">Change vs. current bill</p>
           <div className="font-mono tabular-nums">{fmtDelta(r.passCommitted.total - r.current.total)}/yr</div>
@@ -144,8 +144,8 @@ export default function Results({
             </p>
             {committed && (
               <p>
-                The ${committed.value.toFixed(2)} figure is the district&rsquo;s public commitment for 2027 only — it is not legally
-                binding, and later years may be set higher, up to the authorized ${REFERENDUM.proposedMax.value.toFixed(2)}.{' '}
+                The ${fmtRate(committed.value)} figure is the district&rsquo;s public commitment for 2027 only — it is not legally
+                binding, and later years may be set higher, up to the authorized ${fmtRate(REFERENDUM.proposedMax.value)}.{' '}
                 <a className="text-accent underline" href={committed.source}>Source</a>.
               </p>
             )}

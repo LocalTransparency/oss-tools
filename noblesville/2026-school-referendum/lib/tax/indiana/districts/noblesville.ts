@@ -8,6 +8,8 @@ const SOURCES = {
   dlgfDetermination:
     'https://www.in.gov/dlgf/files/referendum-documentation2/2026-november-referendum-documents/26-015-Noblesville-Schools-Operating-Determination.pdf',
   districtReferendumPage: 'https://www.noblesvilleschools.org/referendum',
+  districtAnnouncement2026_08_12:
+    'https://www.noblesvilleschools.org/referendum',
 } as const;
 
 export const NOBLESVILLE: DistrictReferendumConfig = {
@@ -29,15 +31,15 @@ export const NOBLESVILLE: DistrictReferendumConfig = {
       note: 'Ballot-authorized maximum rate; max annual levy $43,842,578; up to 8 years.',
     },
     committed2027: {
-      value: 0.41, source: SOURCES.districtReferendumPage, status: 'public-commitment',
-      note: 'District public commitment for 2027 only; not legally binding; later years may be higher, up to $0.57.',
+      value: 0.385, source: SOURCES.districtAnnouncement2026_08_12, status: 'public-commitment',
+      note: 'District public commitment for 2027 only, announced 2026-08-12 (revised down from $0.41); not legally binding; later years are projected higher, up to $0.57 authorized.',
     },
     debtEndYear: {
       value: 2032, source: SOURCES.districtReferendumPage, status: 'confirmed',
       note: 'Final levy year for the 2010 referendum debt.',
     },
     explainer:
-      'Noblesville Schools’ 2026 question replaces its current operating referendum ($0.37) with a new operating rate of up to $0.57 (the district has publicly committed to $0.41 for 2027). A separate referendum debt rate ($0.08, levied through 2032) stays on your bill either way — it is not part of this vote.',
+      'Noblesville Schools’ 2026 question replaces its current operating referendum ($0.37) with a new operating rate of up to $0.57 (the district publicly committed to $0.385 for 2027 on 2026-08-12). A separate referendum debt rate ($0.08, levied through 2032) stays on your bill either way — it is not part of this vote.',
   },
   // Gate admits every Noblesville-Schools taxing district. Note "Nob Wayne" is
   // abbreviated in the GIS layer and does NOT contain "noblesville".

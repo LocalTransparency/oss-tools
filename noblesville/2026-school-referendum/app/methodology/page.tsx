@@ -1,6 +1,7 @@
 import { DEDUCTIONS, HOMESTEAD_CREDIT, SOURCES as STATE_SOURCES } from '@/lib/tax/indiana/assumptions';
 import { DISTRICTS } from '@/lib/tax/indiana/districts';
 import { NOBLESVILLE } from '@/lib/tax/indiana/districts/noblesville';
+import { fmtRate } from '@/lib/format';
 import Link from 'next/link';
 
 export const metadata = { title: 'Methodology — Hamilton County School Referendum Tax Estimator' };
@@ -18,9 +19,9 @@ export default function Methodology() {
 
   // Noblesville is used as a labeled worked example where concrete numbers help.
   const nobRef = NOBLESVILLE.referendum;
-  const nobMax = nobRef.proposedMax.value.toFixed(2);
-  const nobCurrent = nobRef.currentOperating!.value.toFixed(2);
-  const nobCommitted = nobRef.committed2027!.value.toFixed(2);
+  const nobMax = fmtRate(nobRef.proposedMax.value);
+  const nobCurrent = fmtRate(nobRef.currentOperating!.value);
+  const nobCommitted = fmtRate(nobRef.committed2027!.value);
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-6">

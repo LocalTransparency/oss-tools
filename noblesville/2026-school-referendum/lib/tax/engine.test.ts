@@ -54,11 +54,12 @@ describe('computeBill — anchored to official figures', () => {
     expect(b.total).toBeCloseTo(4288.1, 2);
   });
 
-  it('pass at committed $0.41: $350k city home ≈ $4,020.26', () => {
+  it('pass at committed $0.385: $350k city home ≈ $3,978.41', () => {
     const b = computeBill(350000, city, SCENARIOS.passCommitted, NOBLESVILLE);
-    expect(b.nonReferendumNet).toBeCloseTo(3200, 2); // 3523.60 capped at 3500, minus $300 credit
-    expect(b.referendumTax).toBeCloseTo(820.26, 2);  // 167400 × 0.49%
-    expect(b.total).toBeCloseTo(4020.26, 2);
+    expect(b.nonReferendumNet).toBeCloseTo(3200, 2);  // 3523.60 capped at 3500, minus $300 credit
+    expect(b.referendumOperatingTax).toBeCloseTo(644.49, 2); // 167400 × 0.385%
+    expect(b.referendumTax).toBeCloseTo(778.41, 2);   // 167400 × 0.465%
+    expect(b.total).toBeCloseTo(3978.41, 2);
   });
 
   it('fail: $350k city home ≈ $3,333.92 — $0.08 debt rate still applies', () => {
