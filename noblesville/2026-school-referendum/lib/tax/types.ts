@@ -1,3 +1,10 @@
+/**
+ * Indiana constitutional property-tax caps (IC 6-1.1-20.6). A parcel's AV can
+ * span more than one class; the county's open parcel data does not publish the
+ * allocation, so this tool infers a dominant class and lets the user override.
+ */
+export type CapClass = 1 | 2 | 3;
+
 export interface Sourced<T> {
   value: T;
   source: string;
