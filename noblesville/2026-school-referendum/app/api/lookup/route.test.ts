@@ -6,6 +6,7 @@ vi.mock('@/lib/lookup/counties', () => ({
 
 import { POST } from './route';
 import { COUNTY_SOURCES } from '@/lib/lookup/counties';
+import { parseResponse } from '@/lib/lookup/arcgis';
 
 const mockSearch = vi.mocked(COUNTY_SOURCES.hamilton.search);
 
@@ -23,6 +24,20 @@ function rawReq(body: string) {
     headers: { 'Content-Type': 'application/json' },
     body,
   });
+}
+
+// Stubs the county search response from raw ArcGIS-shaped attributes (the
+// field names the upstream service actually returns — see
+// lib/lookup/arcgis.ts) and drives the route the same way real callers do:
+// a POST with a JSON `{ q }` body. This route has no GET handler and
+// deliberately never accepts the query as a `?q=` URL parameter — see the
+// privacy comment in route.ts (hosting access logs record GET query
+// strings, not POST bodies).
+function getLookup(query: string, attrs: Record<string, unknown>[]) {
+  mockSearch.mockResolvedValueOnce(
+    parseResponse({ features: attrs.map((a) => ({ attributes: a })) })
+  );
+  return POST(req({ q: query }));
 }
 
 beforeEach(() => mockSearch.mockReset());
@@ -93,12 +108,16 @@ describe('POST /api/lookup — caching', () => {
 
     const first = await POST(req({ q: '99 cache ln' }));
     expect(first.status).toBe(200);
-    expect((await first.json()).candidates).toEqual(result);
+    // toMatchObject, not toEqual: the route adds derived capClass fields
+    // (Task 11) to every candidate at response time, so the response is a
+    // superset of the cached raw parcel data — that enrichment is exercised
+    // separately below.
+    expect((await first.json()).candidates).toMatchObject(result);
     expect(mockSearch).toHaveBeenCalledTimes(1);
 
     const second = await POST(req({ q: '99 cache ln' }));
     expect(second.status).toBe(200);
-    expect((await second.json()).candidates).toEqual(result);
+    expect((await second.json()).candidates).toMatchObject(result);
     expect(mockSearch).toHaveBeenCalledTimes(1); // still 1 — served from cache
   });
 
@@ -111,7 +130,34 @@ describe('POST /api/lookup — caching', () => {
 
     const second = await POST(req({ q: '77 retry rd' }));
     expect(second.status).toBe(200);
-    expect((await second.json()).candidates).toEqual(result);
+    expect((await second.json()).candidates).toMatchObject(result);
     expect(mockSearch).toHaveBeenCalledTimes(2); // retried — the failure wasn't cached
+  });
+});
+
+describe('POST /api/lookup — cap class fields', () => {
+  it('returns an inferred cap class with its confidence and reason', async () => {
+    const res = await getLookup('1 MAIN ST', [
+      { AVTOTGROSS: 350000, AVTAXYR: 2026, hmstd_code: 1, PROPCLASS: '510', TAXDISTNAM: 'Noblesville City', DEEDACRES: 0.25 },
+    ]);
+    const body = await res.json();
+    expect(body.candidates[0].capClass).toBe(1);
+    expect(body.candidates[0].capClassConfidence).toBe('high');
+    expect(body.candidates[0].capClassReason).toMatch(/1% cap/);
+  });
+
+  it('flags an unconfirmed homestead code as low confidence', async () => {
+    // A different query term than the previous test — this route's cache
+    // is a module-level singleton with no reset between tests in this file
+    // (see the "77 retry rd" comment above), so reusing a term here would
+    // return the previous test's cached candidate instead of exercising a
+    // fresh search.
+    const res = await getLookup('2 MAIN ST', [
+      { AVTOTGROSS: 350000, AVTAXYR: 2026, hmstd_code: -1, PROPCLASS: '510', TAXDISTNAM: 'Noblesville City', DEEDACRES: 5.68 },
+    ]);
+    const body = await res.json();
+    expect(body.candidates[0].capClass).toBe(2);
+    expect(body.candidates[0].capClassConfidence).toBe('low');
+    expect(body.candidates[0].deededAcres).toBeCloseTo(5.68, 2);
   });
 });

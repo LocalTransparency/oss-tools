@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { sanitizeSearchTerm } from '@/lib/lookup/arcgis';
+import { sanitizeSearchTerm, type ParcelCandidate } from '@/lib/lookup/arcgis';
 import { COUNTY_SOURCES } from '@/lib/lookup/counties';
 import { getCached, setCached } from '@/lib/lookup/cache';
+import { inferCapClass } from '@/lib/tax/indiana/capClass';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,14 +26,32 @@ export async function POST(request: Request) {
 
   const cached = getCached(term);
   if (cached) {
-    return NextResponse.json({ candidates: cached });
+    return NextResponse.json({ candidates: cached.map(withCapClassInference) });
   }
 
   try {
     const candidates = await COUNTY_SOURCES.hamilton.search(term);
     setCached(term, candidates);
-    return NextResponse.json({ candidates });
+    return NextResponse.json({ candidates: candidates.map(withCapClassInference) });
   } catch {
     return NextResponse.json({ error: 'upstream' }, { status: 502 });
   }
+}
+
+// Enriches a raw parcel candidate with a best-guess constitutional cap class
+// (see lib/tax/indiana/capClass.ts) so the UI can pre-fill it. This is a
+// derived, deterministic view computed at response time — the cache above
+// still stores plain ParcelCandidate values, never the enriched shape.
+function withCapClassInference(c: ParcelCandidate) {
+  const inference = inferCapClass({
+    homesteadCode: c.homesteadCode,
+    propertyClass: c.propertyClass,
+    assessmentYear: c.assessmentYear,
+  });
+  return {
+    ...c,
+    capClass: inference.capClass,
+    capClassConfidence: inference.confidence,
+    capClassReason: inference.reason,
+  };
 }
