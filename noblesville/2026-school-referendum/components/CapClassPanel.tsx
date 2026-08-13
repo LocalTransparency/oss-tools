@@ -13,7 +13,11 @@ const BUCKET_KEYS = ['cap1', 'cap2', 'cap3'] as const;
 interface Props {
   value: AvBuckets;
   inference: CapClassInference;
-  deededAcres: number;
+  // null when the county's acreage figure is missing or unparseable (see
+  // lib/lookup/arcgis.ts) — distinct from a genuine zero-acre parcel, and
+  // treated as "can't rule out multi-acre" below rather than silently as
+  // "not multi-acre."
+  deededAcres: number | null;
   onChange: (b: AvBuckets) => void;
 }
 
@@ -41,8 +45,10 @@ export function CapClassPanel({ value, inference, deededAcres, onChange }: Props
   const total = value.cap1 + value.cap2 + value.cap3;
   // Indiana's homestead covers the dwelling plus one acre; the remainder of
   // a larger homestead parcel is likely under the 2% cap even though this
-  // parcel's inferred class is 1%.
-  const multiAcreHomestead = inference.capClass === 1 && deededAcres > 1;
+  // parcel's inferred class is 1%. An unparseable/missing acreage (null)
+  // can't be ruled out as multi-acre, so it warns too rather than being
+  // silently treated like a confirmed sub-acre lot.
+  const multiAcreHomestead = inference.capClass === 1 && (deededAcres === null || deededAcres > 1);
 
   return (
     <section aria-labelledby="capclass-heading" className="space-y-3 rounded-md border border-border bg-surface p-4">
@@ -63,7 +69,10 @@ export function CapClassPanel({ value, inference, deededAcres, onChange }: Props
 
       {multiAcreHomestead && (
         <p className="text-sm text-muted">
-          This parcel is {deededAcres} acres. Indiana&rsquo;s homestead covers the dwelling plus one
+          {deededAcres === null
+            ? "The county's acreage figure for this parcel is missing or unreadable, so we can't confirm it's a single acre or less."
+            : `This parcel is ${deededAcres} acres.`}{' '}
+          Indiana&rsquo;s homestead covers the dwelling plus one
           acre, so part of the land value is likely assessed under the 2% cap. The county&rsquo;s
           public parcel service doesn&rsquo;t expose that split, so adjust it below if you know your
           own figures.

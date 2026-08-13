@@ -69,6 +69,17 @@ describe('CapClassPanel', () => {
     expect(screen.queryByText(/dwelling plus one acre/i)).not.toBeInTheDocument();
   });
 
+  // Finding 5: an unparseable/missing county acreage figure (null — see
+  // lib/lookup/arcgis.ts) must not be silently treated as a confirmed
+  // sub-acre lot. It can't be ruled out as multi-acre, so the warning fires,
+  // worded for "we don't know" rather than a specific acreage.
+  it('flags a homestead with unknown (null) acreage as possibly multi-acre, rather than silently withholding the warning', () => {
+    render(<CapClassPanel {...base} deededAcres={null} onChange={() => {}} />);
+    expect(screen.getByText(/dwelling plus one acre/i)).toBeInTheDocument();
+    expect(screen.getByText(/missing or unreadable/i)).toBeInTheDocument();
+    expect(screen.queryByText(/this parcel is null acres/i)).not.toBeInTheDocument();
+  });
+
   it('never claims the split is unpublished — only that the county parcel service does not expose it', () => {
     render(<CapClassPanel {...base} deededAcres={5.68} onChange={() => {}} />);
     expect(screen.queryByText(/does not publish that split/i)).not.toBeInTheDocument();
@@ -87,11 +98,12 @@ describe('CapClassPanel', () => {
   });
 
   // A prior review found that a negative bucket inflates the circuit-breaker
-  // credit: {cap1: 350000, cap3: -100000} turns a $4,015 bill into $1,015.
+  // credit: {cap1: 350000, cap3: -100000} turned a $4,015 bill into $1,015.
   // That was unreachable while Results.tsx forced a single positive bucket;
   // the override inputs above make it reachable, so every bucket must clamp
-  // at zero the moment a value enters state.
-  it('clamps a negative override to zero, and proves that clamp cannot produce a lower bill than a legitimate zero for that class', async () => {
+  // at zero the moment a value enters state — as defense in depth on top of
+  // the engine fix below.
+  it('clamps a negative override to zero, and proves it matches the legitimate-zero bill', async () => {
     const onChange = vi.fn();
     render(<CapClassPanel {...base} onChange={onChange} />);
     await userEvent.click(screen.getByRole('button', { name: /adjust/i }));
@@ -105,17 +117,21 @@ describe('CapClassPanel', () => {
     const emitted = onChange.mock.calls.map((call) => call[0] as AvBuckets);
     expect(emitted.every((b) => b.cap1 >= 0 && b.cap2 >= 0 && b.cap3 >= 0)).toBe(true);
 
-    // Quantify why the clamp matters: an unclamped negative bucket materially
-    // lowers the bill (the exact prior-review finding), so the clamped result
-    // must match the legitimate-zero bill, not the exploited one.
+    // A follow-up review fix closed the exploit at the engine itself
+    // (computeBill/computeNetAV now floor every bucket at zero on entry — see
+    // lib/tax/engine.ts), so the previously-exploited unclamped negative
+    // bucket now matches the legitimate-zero bill too, not just the
+    // UI-clamped one. The UI clamp above remains defense in depth: no
+    // negative number should sit in component state at all, even though the
+    // engine can no longer be fooled by one that does.
     const city = findDistrict(NOBLESVILLE, 'Noblesville City')!;
     const scenario = buildScenarios(NOBLESVILLE).current;
     const clampedBuckets = onChange.mock.calls.at(-1)![0] as AvBuckets;
     const clampedBill = computeBill(clampedBuckets, city, scenario, NOBLESVILLE);
     const legitimateZeroBill = computeBill({ cap1: 350000, cap2: 0, cap3: 0 }, city, scenario, NOBLESVILLE);
-    const exploitedBill = computeBill({ cap1: 350000, cap2: 0, cap3: -100000 }, city, scenario, NOBLESVILLE);
+    const previouslyExploitedBill = computeBill({ cap1: 350000, cap2: 0, cap3: -100000 }, city, scenario, NOBLESVILLE);
 
     expect(clampedBill.total).toBe(legitimateZeroBill.total);
-    expect(clampedBill.total).toBeGreaterThan(exploitedBill.total);
+    expect(previouslyExploitedBill.total).toBe(legitimateZeroBill.total);
   });
 });

@@ -24,17 +24,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'query-too-short' }, { status: 400 });
   }
 
+  let candidates: ParcelCandidate[];
   const cached = getCached(term);
   if (cached) {
-    return NextResponse.json({ candidates: cached.map(withCapClassInference) });
+    candidates = cached;
+  } else {
+    try {
+      candidates = await COUNTY_SOURCES.hamilton.search(term);
+    } catch (err) {
+      // searchParcels (lib/lookup/arcgis.ts) collapses network failure,
+      // non-200, timeout, and response-body read failure into
+      // Error('upstream') — the county service, or the network path to it,
+      // is genuinely unavailable. Anything else thrown out of search (e.g. a
+      // regression in parseResponse) is OUR bug, not the county's, and must
+      // not be reported under the same identity — a real parsing defect
+      // should never be indistinguishable from a county outage.
+      if (err instanceof Error && err.message === 'upstream') {
+        return NextResponse.json({ error: 'upstream' }, { status: 502 });
+      }
+      return NextResponse.json({ error: 'internal' }, { status: 500 });
+    }
+    setCached(term, candidates);
   }
 
+  // Enrichment runs on both the cache-hit and cache-miss path, and both must
+  // fail identically: a throw here is our bug (the cache-hit path used to
+  // leave this uncaught, surfacing a raw framework 500 while the cache-miss
+  // path returned a friendly 502 for the exact same failure). It is never
+  // reported as 'upstream' — a cache hit makes no county call this request,
+  // so blaming the county would be misleading.
   try {
-    const candidates = await COUNTY_SOURCES.hamilton.search(term);
-    setCached(term, candidates);
     return NextResponse.json({ candidates: candidates.map(withCapClassInference) });
   } catch {
-    return NextResponse.json({ error: 'upstream' }, { status: 502 });
+    return NextResponse.json({ error: 'internal' }, { status: 500 });
   }
 }
 

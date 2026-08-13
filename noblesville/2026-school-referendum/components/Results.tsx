@@ -3,6 +3,7 @@ import { buildScenarios, computeAllScenarios } from '@/lib/tax/scenarios';
 import { CIRCUIT_BREAKER_RATES, HOMESTEAD_CREDIT } from '@/lib/tax/indiana/assumptions';
 import { fmtCents, fmtDelta, fmtDollars, fmtRate } from '@/lib/format';
 import { Projection } from './Projection';
+import { ProjectionErrorBoundary } from './ProjectionErrorBoundary';
 
 interface Props {
   config: DistrictReferendumConfig;
@@ -149,7 +150,14 @@ export default function Results({
         </p>
       </div>
 
-      <Projection buckets={buckets} config={config} />
+      {/* projectReferendumLine throws for a schedule year outside the
+          DEDUCTIONS/CAP2_AV_DEDUCTION tables (see lib/tax/projection.ts).
+          The scenario cards above are what a voter most needs and must keep
+          rendering even if a routine data edit to a district's operatingRates
+          breaks this panel — see ProjectionErrorBoundary's doc. */}
+      <ProjectionErrorBoundary>
+        <Projection buckets={buckets} config={config} />
+      </ProjectionErrorBoundary>
 
       <details className="rounded-md border border-border bg-surface p-4">
         <summary className="cursor-pointer font-medium">How this was calculated</summary>

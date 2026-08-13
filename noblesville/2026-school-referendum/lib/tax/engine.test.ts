@@ -125,6 +125,49 @@ describe('computeNetAV — cap-class behavior', () => {
   });
 });
 
+// Finding 1 (critical): a mistyped growth rate (e.g. -150 meant as -1.5%) can
+// flip an AV bucket negative. Without a floor, the deduction math turns that
+// negative gross back into a CONFIDENT POSITIVE net AV: standardDeduction =
+// min(-175000, 48000) = -175000, afterStandard floors to 0, then the
+// supplemental computes min(0, -175000 × 0.75) = -131250, and
+// max(0, 0 − (-131250)) manufactures a net AV of 131,250 out of nothing. Each
+// bucket must be floored at zero on entry, before any deduction math, so a
+// negative gross can never round-trip into a plausible-looking positive.
+describe('computeNetAV — negative buckets never manufacture a positive net AV (Finding 1)', () => {
+  it('a negative cap1 bucket floors to zero net AV, not a fabricated positive figure', () => {
+    const r = computeNetAV({ cap1: -175000, cap2: 0, cap3: 0 }, SCENARIOS.current);
+    expect(r.standardDeduction).toBe(0);
+    expect(r.supplementalDeduction).toBe(0);
+    expect(r.netAV).toBe(0);
+    expect(r.byClass[1]).toBe(0);
+  });
+
+  it('a negative cap2 bucket floors to zero net AV', () => {
+    const r = computeNetAV({ cap1: 0, cap2: -100000, cap3: 0 }, SCENARIOS.passCommitted);
+    expect(r.cap2Deduction).toBe(0);
+    expect(r.netAV).toBe(0);
+  });
+
+  it('a negative cap3 bucket floors to zero net AV', () => {
+    const r = computeNetAV({ cap1: 0, cap2: 0, cap3: -50000 }, SCENARIOS.passCommitted);
+    expect(r.netAV).toBe(0);
+  });
+});
+
+// Finding 3: a pay year missing from CAP2_AV_DEDUCTION must throw, the same
+// way lib/tax/projection.ts throws for a pay year missing from DEDUCTIONS.
+// Silently defaulting to 0% (the prior behavior) OVERSTATES the tax by
+// skipping the cap-2 deduction entirely, with no signal anything is wrong.
+describe('computeNetAV — a pay year missing from CAP2_AV_DEDUCTION throws, not silently 0 (Finding 3)', () => {
+  it('throws a named error naming the year and the file to extend', () => {
+    const scenario = { ...SCENARIOS.current, payYear: 2099 };
+    expect(() => computeNetAV({ cap1: 0, cap2: 100000, cap3: 0 }, scenario)).toThrow(
+      /Missing CAP2_AV_DEDUCTION entry for pay year 2099.*lib\/tax\/indiana\/assumptions\.ts/,
+    );
+  });
+
+});
+
 const city = findDistrict(NOBLESVILLE, 'Noblesville City')!;
 const township = findDistrict(NOBLESVILLE, 'Noblesville Twp')!;
 
@@ -208,6 +251,23 @@ describe('computeBill — cap and credit boundaries', () => {
     expect(b.circuitBreakerCredit).toBeCloseTo(124, 2);  // capped at 3500
     expect(b.referendumTax).toBe(0);
     expect(b.total).toBeCloseTo(3200, 2);                // 3500 − 300
+  });
+
+  // Finding 2: a negative bucket passed directly to computeBill inflates the
+  // circuit-breaker credit — {cap1: 350000, cap3: -100000} previously gave a
+  // cap of 3500 + 0 − 3000 = 500 instead of $3,500, dropping a $4,015.40 bill
+  // to $1,015.40, because grossByClass fed the RAW (unfloored) buckets
+  // straight into `cap = grossByClass[c] * CIRCUIT_BREAKER_RATES.value[c]`.
+  // The Finding 1 engine fix (flooring buckets on entry) must close this too:
+  // a negative bucket handed straight to computeBill must behave exactly
+  // like a legitimate zero for that class, not like free money.
+  it('a negative bucket passed directly to computeBill cannot inflate the circuit-breaker credit (Finding 2)', () => {
+    const b = computeBill({ cap1: 350000, cap2: 0, cap3: -100000 }, city, SCENARIOS.current, NOBLESVILLE);
+    const control = computeBill({ cap1: 350000, cap2: 0, cap3: 0 }, city, SCENARIOS.current, NOBLESVILLE);
+    expect(b.circuitBreakerCap).toBeCloseTo(3500, 2);
+    expect(b.circuitBreakerCredit).toBeCloseTo(control.circuitBreakerCredit, 2);
+    expect(b.total).toBeCloseTo(control.total, 2);
+    expect(b.total).toBeCloseTo(4015.4, 2);
   });
 
   it('referendum tax is excluded from both the cap and the credit base', () => {

@@ -35,7 +35,18 @@ export interface CapClassInference {
  * under the state's 2% class; every other prefix is "Other" (3%).
  */
 
-/** The pay year this tool's projection treats as its ungrown base. */
+/**
+ * The pay year this tool's projection treats as its ungrown base.
+ *
+ * Deliberately NOT a `Sourced<number>` like the numeric assumptions in
+ * assumptions.ts: those are externally-sourced legal facts (a deduction
+ * schedule, a cap rate) with a citable URL. This is an internal tool
+ * convention with no such source — it just has to move in lockstep with two
+ * other places that hardcode the same "2026 is the base year" assumption:
+ * DEDUCTIONS[2026] in lib/tax/indiana/assumptions.ts, and the 'current'
+ * scenario's `payYear: 2026` in lib/tax/scenarios.ts. A year rollover must
+ * update all three together.
+ */
 const BASE_ASSESSMENT_YEAR = 2026;
 
 /** State DLGF calculator wording for each cap class — quoted verbatim below, not paraphrased. */
@@ -67,10 +78,10 @@ export function inferCapClass(attrs: {
     };
   }
 
-  // hmstd_code = -1 appears on at least 1,295 Noblesville-district parcels in
-  // Hamilton County's open data and its meaning is unconfirmed with the
-  // county. It gets its own named branch — never a silent fall-through into
-  // 0/non-homestead — and always lowers confidence.
+  // hmstd_code = -1 appears on a large number of Noblesville-district parcels
+  // in Hamilton County's open data (observed 2026-08-12) and its meaning is
+  // unconfirmed with the county. It gets its own named branch — never a
+  // silent fall-through into 0/non-homestead — and always lowers confidence.
   if (homesteadCode === null || homesteadCode === -1) {
     const fallbackClass: CapClass = isResidentialOrAg ? 2 : 3;
     const codeDescription = homesteadCode === null ? 'missing' : 'unconfirmed (-1)';

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Projection } from './Projection';
 import { NOBLESVILLE } from '../lib/tax/indiana/districts/noblesville';
@@ -153,6 +153,59 @@ describe('operating-vs-combined arithmetic reconciles (must not silently regress
     // unrounded numbers satisfy it exactly (see lib/tax/projection.test.ts).
     expect(averageStep * 8).toBeCloseTo(finalYearIncrease, 1);
     expect(averageStep).toBe(1.88);
+  });
+});
+
+// Finding 1 (critical): the growth fields carried only step="0.1", no
+// min/max, and no validation. A visitor entering -150 (meant as -1.5%,
+// mistyped) used to flip the assessed value's sign every year and,
+// pre-engine-fix, fabricate a confident positive dollar figure from a
+// negative gross AV. The engine itself is now safe (lib/tax/engine.test.ts),
+// but an absurd growth assumption is still not something this tool should
+// silently accept or silently clamp — it must produce a visible message and
+// leave the table on the last real assumption, the same way a half-typed
+// entry does.
+describe('growth override rejects an out-of-range entry with a visible message (Finding 1)', () => {
+  const cellText = (year: number, col: number) => {
+    const row = within(screen.getByRole('table')).getByText(String(year)).closest('tr')!;
+    return within(row).getAllByRole('cell')[col].textContent!;
+  };
+  const OPERATING_MO = 3;
+
+  it('a wildly out-of-range entry (-150) shows a visible message and does not change the projection', () => {
+    render(<Projection buckets={buckets} config={NOBLESVILLE} />);
+    const before = cellText(2034, OPERATING_MO);
+
+    const input = screen.getByLabelText(/growth after 2027/i);
+    // A single programmatic set (rather than keystroke-by-keystroke typing)
+    // so the assertion targets the range check itself: typing "-150" one
+    // character at a time passes through "-1" and "-15", both of which are
+    // legitimately in-range and would otherwise commit before "-150" lands —
+    // see CapClassPanel.test.tsx for the same reasoning.
+    fireEvent.change(input, { target: { value: '-150' } });
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/between -20% and 20%/i);
+    expect(cellText(2034, OPERATING_MO)).toBe(before);
+  });
+
+  it('recovering with an in-range entry clears the message and updates the projection', () => {
+    render(<Projection buckets={buckets} config={NOBLESVILLE} />);
+    const before = cellText(2034, OPERATING_MO);
+
+    const input = screen.getByLabelText(/growth after 2027/i);
+    fireEvent.change(input, { target: { value: '-150' } });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+
+    fireEvent.change(input, { target: { value: '0' } });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(cellText(2034, OPERATING_MO)).not.toBe(before);
+  });
+
+  it('the input carries min/max attributes as defense in depth against out-of-range input', () => {
+    render(<Projection buckets={buckets} config={NOBLESVILLE} />);
+    const input = screen.getByLabelText(/growth after 2027/i);
+    expect(input).toHaveAttribute('min', '-20');
+    expect(input).toHaveAttribute('max', '20');
   });
 });
 

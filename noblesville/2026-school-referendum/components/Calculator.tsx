@@ -69,7 +69,7 @@ export default function Calculator() {
   // inference on selection and freely editable afterward — see CapClassPanel.
   const [buckets, setBuckets] = useState<AvBuckets | null>(null);
   const [capInference, setCapInference] = useState<CapClassInference | null>(null);
-  const [deededAcres, setDeededAcres] = useState(0);
+  const [deededAcres, setDeededAcres] = useState<number | null>(0);
 
   function clearCapClassState() {
     setBuckets(null);

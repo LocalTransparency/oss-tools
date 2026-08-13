@@ -27,7 +27,10 @@ export interface ParcelCandidate {
   propertyClass: string;
   avLand: number;
   avImprove: number;
-  deededAcres: number;
+  // null when DEEDACRES is missing or unparseable — distinct from a genuine
+  // zero-acre reading, so a caller (see CapClassPanel.tsx's multi-acre
+  // warning) never mistakes "we don't know" for "we know it's small."
+  deededAcres: number | null;
 }
 
 /**
@@ -147,6 +150,18 @@ function homesteadCodeOf(attrs: Record<string, unknown>): number | null {
   return null;
 }
 
+/**
+ * DEEDACRES missing or unparseable → null, never 0. `Number(attrs.DEEDACRES)
+ * || 0` used to collapse both cases to the same value a genuine sub-acre lot
+ * reports, which silently withheld CapClassPanel's multi-acre-homestead
+ * warning for exactly the parcel most likely to need it — bad county data
+ * often correlates with an unusual parcel, not a small one.
+ */
+function deededAcresOf(attrs: Record<string, unknown>): number | null {
+  const n = Number(attrs.DEEDACRES);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function parseResponse(json: unknown): ParcelCandidate[] {
   if (!json || typeof json !== 'object') return [];
   const features = (json as { features?: unknown }).features;
@@ -171,7 +186,7 @@ export function parseResponse(json: unknown): ParcelCandidate[] {
       propertyClass: String(attrs.PROPCLASS ?? ''),
       avLand: Number(attrs.AVLAND) || 0,
       avImprove: Number(attrs.AVIMPROVE) || 0,
-      deededAcres: Number(attrs.DEEDACRES) || 0,
+      deededAcres: deededAcresOf(attrs),
     }];
   });
 }

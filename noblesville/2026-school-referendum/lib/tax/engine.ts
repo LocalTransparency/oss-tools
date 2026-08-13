@@ -66,6 +66,29 @@ export function totalGrossAV(b: AvBuckets): number {
 }
 
 /**
+ * Floors every bucket at zero. This is the real backstop against a negative
+ * bucket — from a mistyped growth rate compounding an AV negative (see
+ * projectReferendumLine), or a negative value reaching computeBill directly —
+ * ever being treated as real. Without this, a negative cap1 round-trips
+ * through the deduction math in computeNetAV into a CONFIDENT POSITIVE net AV
+ * (standardDeduction = min(-175000, 48000) = -175000, afterStandard floors to
+ * 0, supplemental = min(0, -175000 × 0.75) = -131250, and
+ * max(0, 0 − (-131250)) manufactures 131,250 out of nothing), and a negative
+ * bucket fed straight to computeBill's per-class circuit-breaker cap
+ * (`grossByClass[c] * CIRCUIT_BREAKER_RATES.value[c]`) produces a negative
+ * cap threshold that inflates the credit instead of shrinking it. Both
+ * computeNetAV and computeBill apply this at their own entry point, so
+ * neither can be bypassed by calling the other directly.
+ */
+export function floorBuckets(buckets: AvBuckets): AvBuckets {
+  return {
+    cap1: Math.max(0, buckets.cap1),
+    cap2: Math.max(0, buckets.cap2),
+    cap3: Math.max(0, buckets.cap3),
+  };
+}
+
+/**
  * Loud invariant: a parcel with positive gross AV whose constructed buckets
  * sum to zero is a contradiction, not a legitimate $0 estimate, and must
  * never render as one. bucketsOf's fallback above should make this
@@ -88,7 +111,11 @@ export function assertBucketsConsistent(grossAV: number, buckets: AvBuckets): vo
  * cap-1 AV only; the SEA 1 Cap 2 deduction applies to cap-2 AV; cap-3 AV gets
  * nothing. Each bucket is floored at zero independently.
  */
-export function computeNetAV(buckets: AvBuckets, s: ScenarioParams) {
+export function computeNetAV(rawBuckets: AvBuckets, s: ScenarioParams) {
+  // Floor first, before any deduction math — see floorBuckets' doc for why a
+  // negative bucket must never reach the arithmetic below.
+  const buckets = floorBuckets(rawBuckets);
+
   const standardDeduction = Math.min(buckets.cap1, s.standardDeduction);
   const afterStandard = Math.max(0, buckets.cap1 - standardDeduction);
   const supplementalDeduction = Math.min(
@@ -97,7 +124,16 @@ export function computeNetAV(buckets: AvBuckets, s: ScenarioParams) {
   );
   const cap1Net = Math.max(0, afterStandard - supplementalDeduction);
 
-  const cap2Rate = CAP2_AV_DEDUCTION.value[s.payYear] ?? 0;
+  // A pay year missing from this table must throw, the same way
+  // projectReferendumLine throws for a pay year missing from DEDUCTIONS —
+  // silently defaulting to 0% (the prior behavior) skips the cap-2 deduction
+  // entirely and OVERSTATES the tax with no signal anything is wrong.
+  const cap2Rate = CAP2_AV_DEDUCTION.value[s.payYear];
+  if (cap2Rate === undefined) {
+    throw new Error(
+      `Missing CAP2_AV_DEDUCTION entry for pay year ${s.payYear}; extend lib/tax/indiana/assumptions.ts before pricing it.`,
+    );
+  }
   const cap2Deduction = buckets.cap2 * cap2Rate;
   const cap2Net = Math.max(0, buckets.cap2 - cap2Deduction);
 
@@ -113,11 +149,18 @@ export function computeNetAV(buckets: AvBuckets, s: ScenarioParams) {
 }
 
 export function computeBill(
-  buckets: AvBuckets,
+  rawBuckets: AvBuckets,
   district: TaxDistrict,
   s: ScenarioParams,
   config: DistrictReferendumConfig,
 ): BillBreakdown {
+  // Floor at this entry point too (see floorBuckets' doc). computeNetAV
+  // floors internally, but computeBill also builds grossByClass directly
+  // from the buckets below for the per-class circuit-breaker cap — that read
+  // has to see the same floored values, or a negative bucket handed straight
+  // to computeBill (bypassing computeNetAV's own floor) still inflates the
+  // credit (Finding 2).
+  const buckets = floorBuckets(rawBuckets);
   const { standardDeduction, supplementalDeduction, cap2Deduction, netAV, byClass } =
     computeNetAV(buckets, s);
 

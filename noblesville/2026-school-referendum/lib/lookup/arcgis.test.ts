@@ -183,4 +183,29 @@ describe('parseResponse — cap-class inputs', () => {
       expect(decodeURIComponent(url)).toContain(f);
     }
   });
+
+  // Finding 5: `Number(attrs.DEEDACRES) || 0` collapsed garbage/missing
+  // acreage to the same 0 a genuine sub-acre lot reports, which silently
+  // suppressed CapClassPanel's multi-acre-homestead warning for exactly the
+  // parcel most likely to need it (unreadable county data often correlates
+  // with an unusual parcel). An unparseable acreage must be distinguishable
+  // from a real zero.
+  it('reports an unparseable DEEDACRES as null, not a genuine zero', () => {
+    const parsed = parseResponse({
+      features: [{ attributes: { AVTOTGROSS: 350000, DEEDACRES: 'N/A' } }],
+    });
+    expect(parsed[0].deededAcres).toBeNull();
+  });
+
+  it('reports a missing DEEDACRES field as null, not a genuine zero', () => {
+    const parsed = parseResponse({ features: [{ attributes: { AVTOTGROSS: 350000 } }] });
+    expect(parsed[0].deededAcres).toBeNull();
+  });
+
+  it('still reports a genuine zero acreage as 0, distinct from unparseable', () => {
+    const parsed = parseResponse({
+      features: [{ attributes: { AVTOTGROSS: 350000, DEEDACRES: 0 } }],
+    });
+    expect(parsed[0].deededAcres).toBe(0);
+  });
 });

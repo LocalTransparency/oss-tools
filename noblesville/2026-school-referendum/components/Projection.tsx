@@ -25,18 +25,41 @@ const pct1 = (fraction: number) => Math.round(fraction * 1000) / 10;
  *
  * So `text` is whatever is in the field, and `value` only advances when the field
  * parses to a real number — leaving the table steady until the entry means
- * something.
+ * something. `outOfRange` is the twin case for a NUMBER that parses fine but is
+ * not a plausible assessed-value growth rate (e.g. -150, meant as -1.5% and
+ * mistyped) — see MIN_GROWTH_PCT/MAX_GROWTH_PCT below.
  */
 interface PctOverride {
   text: string;
   value: number;
+  outOfRange: boolean;
 }
 
-/** Keep the typed text; advance the committed rate only on a parseable entry. */
+/**
+ * Sane bounds for a year-over-year assessed-value growth assumption. -150%
+ * growth is not a real input, it's a decimal-point mistake (-1.5% typed as
+ * -150) — HTML's `min`/`max` on `type="number"` do not stop that from being
+ * typed or pasted, so this range is enforced again here, in the change
+ * handler, where a violation can be surfaced as a visible message instead of
+ * silently clamped. Silently clamping to the boundary would itself be a
+ * plausible-but-wrong output: the visitor would see a number and have no way
+ * to know it wasn't what they typed.
+ */
+const MIN_GROWTH_PCT = -20;
+const MAX_GROWTH_PCT = 20;
+
+/**
+ * Keep the typed text; advance the committed rate only on a parseable,
+ * in-range entry. An out-of-range entry is treated the same as an
+ * unparseable one for the committed rate (frozen at the last real value) but
+ * is flagged distinctly so the caller can show why nothing moved.
+ */
 const nextOverride = (raw: string, previous: PctOverride | null, fallback: number): PctOverride => {
   const n = Number(raw);
   const parseable = raw.trim() !== '' && Number.isFinite(n);
-  return { text: raw, value: parseable ? n : previous?.value ?? fallback };
+  const outOfRange = parseable && (n < MIN_GROWTH_PCT || n > MAX_GROWTH_PCT);
+  const advance = parseable && !outOfRange;
+  return { text: raw, value: advance ? n : previous?.value ?? fallback, outOfRange };
 };
 
 /**
@@ -119,6 +142,8 @@ export function Projection({ buckets, config }: Props) {
           <input
             type="number"
             step="0.1"
+            min={MIN_GROWTH_PCT}
+            max={MAX_GROWTH_PCT}
             className="mt-1 block w-24 rounded-md border border-border bg-surface p-2"
             value={firstYear?.text ?? String(firstYearDefault)}
             onChange={(e) => setFirstYear((prev) => nextOverride(e.target.value, prev, firstYearDefault))}
@@ -129,11 +154,19 @@ export function Projection({ buckets, config }: Props) {
           <input
             type="number"
             step="0.1"
+            min={MIN_GROWTH_PCT}
+            max={MAX_GROWTH_PCT}
             className="mt-1 block w-24 rounded-md border border-border bg-surface p-2"
             value={laterYears?.text ?? String(laterYearsDefault)}
             onChange={(e) => setLaterYears((prev) => nextOverride(e.target.value, prev, laterYearsDefault))}
           />
         </label>
+        {(firstYear?.outOfRange || laterYears?.outOfRange) && (
+          <p role="alert" className="w-full text-sm text-warning-fg">
+            Enter a growth rate between {MIN_GROWTH_PCT}% and {MAX_GROWTH_PCT}% — the projection
+            below still uses the last valid rate.
+          </p>
+        )}
         {modified && (
           <button
             type="button"

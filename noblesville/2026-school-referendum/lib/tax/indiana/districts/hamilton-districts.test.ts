@@ -3,6 +3,7 @@ import { DISTRICTS } from './index';
 import { resolveTaxDistrict } from './resolve';
 import { bucketsOf, nonReferendumRate } from '../../engine';
 import { buildScenarios, computeAllScenarios } from '../../scenarios';
+import { DEDUCTIONS, CAP2_AV_DEDUCTION } from '../assumptions';
 
 const ALL = Object.entries(DISTRICTS);
 
@@ -31,6 +32,33 @@ describe('all Hamilton district configs — data integrity', () => {
   it('every district links to its DLGF determination PDF', () => {
     for (const [, config] of ALL) {
       expect(config.referendum.proposedMax.source).toMatch(/in\.gov\/dlgf\/.*Determination\.pdf$/i);
+    }
+  });
+});
+
+// Finding 4: a district's operatingRates schedule (lib/tax/indiana/districts/*.ts)
+// and the pay-year assumption tables it draws on (lib/tax/indiana/assumptions.ts)
+// are two files edited independently. The README describes extending a
+// district's operatingRates past 2034 as a routine data edit — but
+// projectReferendumLine throws for any year missing from either table (see
+// lib/tax/projection.ts and lib/tax/engine.ts's computeNetAV), and nothing
+// upstream of that throw caught it before this fix (see
+// components/ProjectionErrorBoundary.tsx for the runtime half of this guard).
+// This test is the loud, pre-deploy half: it fails in CI the moment a
+// projection schedule outruns the assumption tables, instead of a visitor
+// discovering it as a blank page on election week.
+describe('every district\'s projection schedule stays inside the assumption tables (data integrity)', () => {
+  it('every year in operatingRates has a matching DEDUCTIONS and CAP2_AV_DEDUCTION entry', () => {
+    for (const [id, config] of ALL) {
+      const projection = config.referendum.projection;
+      if (!projection) continue;
+      for (const year of Object.keys(projection.operatingRates.value).map(Number)) {
+        expect(DEDUCTIONS[year], `${id}: DEDUCTIONS is missing pay year ${year}`).toBeDefined();
+        expect(
+          CAP2_AV_DEDUCTION.value[year],
+          `${id}: CAP2_AV_DEDUCTION is missing pay year ${year}`,
+        ).toBeDefined();
+      }
     }
   });
 });

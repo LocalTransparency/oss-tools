@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import Results, { circuitBreakerCapLabel } from './Results';
 import { bucketsOf, findDistrict } from '@/lib/tax/engine';
@@ -101,6 +101,47 @@ describe('<Results>', () => {
     expect(screen.queryByText(/referendum debt tax/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/public commitment for 2027 only/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/committed 2027 rate/i)).not.toBeInTheDocument();
+  });
+
+  // Finding 4: a district's projection.operatingRates schedule can outrun the
+  // DEDUCTIONS/CAP2_AV_DEDUCTION assumption tables (see
+  // lib/tax/indiana/districts/hamilton-districts.test.ts's data-integrity
+  // test for the real, pre-deploy guard against this). If it ships anyway,
+  // projectReferendumLine throws inside Projection's useMemo — this proves
+  // that failure degrades gracefully instead of taking the whole page down:
+  // the scenario cards a voter most needs must still render.
+  it('keeps the rest of the calculator working when the projection panel throws (ProjectionErrorBoundary)', () => {
+    const outOfRange: DistrictReferendumConfig = {
+      id: 'out-of-range', name: 'Out Of Range Schools', county: 'Test', sources: {},
+      referendum: {
+        proposedMax: { value: 0.25, source: 'https://example.test/ballot', status: 'confirmed' },
+        projection: {
+          operatingRates: { value: { 2026: 0.37, 2099: 0.4 }, source: 'https://example.test/sched', status: 'confirmed' },
+          avGrowth: { value: { 2099: 0.035 }, source: 'https://example.test/growth', status: 'confirmed' },
+        },
+      },
+      gisGate: /out-of-range/i,
+      taxDistricts: [{ name: 'Out Of Range Township', match: /township/i, totalRate2026: 2.0 }],
+    };
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(
+      <Results
+        config={outOfRange}
+        addressLabel={null}
+        buckets={bucketsOf(350000, 1)}
+        district={outOfRange.taxDistricts[0]}
+        homestead={true}
+        assessmentYear={null}
+        propertyReportUrl={null}
+      />,
+    );
+    spy.mockRestore();
+
+    // The projection panel fails visibly, not silently and not as a blank page.
+    expect(screen.getByRole('alert', { name: '' })).toHaveTextContent(/projection is unavailable/i);
+    // The scenario cards above it are unaffected.
+    expect(screen.getByRole('heading', { name: /Estimated property taxes.*Out Of Range Schools/i })).toBeInTheDocument();
+    expect(screen.getByText(/difference between out of range schools passing and failing/i)).toBeInTheDocument();
   });
 
   it('names the single class rate in the circuit breaker cap label when only one class carries gross AV', () => {
