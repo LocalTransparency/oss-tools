@@ -1,6 +1,7 @@
-import type { BillBreakdown, DistrictReferendumConfig, ScenarioId, ScenarioParams, TaxDistrict } from './types';
+import type { AvBuckets, BillBreakdown, DistrictReferendumConfig, ScenarioId, ScenarioParams, TaxDistrict } from './types';
 import { DEDUCTIONS } from './indiana/assumptions';
 import { computeBill } from './engine';
+import { fmtRate } from '../format';
 
 export interface ScenarioResults {
   current: BillBreakdown;
@@ -29,8 +30,8 @@ export function buildScenarios(config: DistrictReferendumConfig): Record<Scenari
       // "committed 2027 rate" only when the district actually published a commitment;
       // otherwise committedRate === proposedMax, so label it as the authorized maximum.
       label: config.referendum.committed2027
-        ? `If it passes — committed 2027 rate ($${committedRate.toFixed(2)})`
-        : `If it passes — authorized maximum ($${committedRate.toFixed(2)})`,
+        ? `If it passes — committed 2027 rate ($${fmtRate(committedRate)})`
+        : `If it passes — authorized maximum ($${fmtRate(committedRate)})`,
       payYear: 2027,
       standardDeduction: DEDUCTIONS[2027].value.standard,
       supplementalRate: DEDUCTIONS[2027].value.supplementalRate,
@@ -39,7 +40,7 @@ export function buildScenarios(config: DistrictReferendumConfig): Record<Scenari
     },
     passMax: {
       id: 'passMax',
-      label: `If it passes — authorized maximum ($${proposedMaxRate.toFixed(2)})`,
+      label: `If it passes — authorized maximum ($${fmtRate(proposedMaxRate)})`,
       payYear: 2027,
       standardDeduction: DEDUCTIONS[2027].value.standard,
       supplementalRate: DEDUCTIONS[2027].value.supplementalRate,
@@ -57,15 +58,15 @@ export function buildScenarios(config: DistrictReferendumConfig): Record<Scenari
 }
 
 export function computeAllScenarios(
-  grossAV: number,
+  buckets: AvBuckets,
   district: TaxDistrict,
   config: DistrictReferendumConfig,
 ): ScenarioResults {
   const scenarios = buildScenarios(config);
   return {
-    current: computeBill(grossAV, district, scenarios.current, config),
-    passCommitted: computeBill(grossAV, district, scenarios.passCommitted, config),
-    passMax: computeBill(grossAV, district, scenarios.passMax, config),
-    fail: computeBill(grossAV, district, scenarios.fail, config),
+    current: computeBill(buckets, district, scenarios.current, config),
+    passCommitted: computeBill(buckets, district, scenarios.passCommitted, config),
+    passMax: computeBill(buckets, district, scenarios.passMax, config),
+    fail: computeBill(buckets, district, scenarios.fail, config),
   };
 }

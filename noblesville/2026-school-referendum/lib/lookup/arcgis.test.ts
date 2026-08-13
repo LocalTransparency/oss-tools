@@ -161,3 +161,51 @@ describe('searchParcels', () => {
     expect(where.match(/'/g)).toHaveLength(4);
   });
 });
+
+describe('parseResponse — cap-class inputs', () => {
+  it('preserves hmstd_code verbatim, including -1', () => {
+    const parsed = parseResponse({
+      features: [{ attributes: { AVTOTGROSS: 350000, hmstd_code: -1, PROPCLASS: '510', DEEDACRES: 5.68 } }],
+    });
+    expect(parsed[0].homesteadCode).toBe(-1);
+    expect(parsed[0].propertyClass).toBe('510');
+    expect(parsed[0].deededAcres).toBeCloseTo(5.68, 2);
+  });
+
+  it('reports a missing homestead code as null rather than 0', () => {
+    const parsed = parseResponse({ features: [{ attributes: { AVTOTGROSS: 350000 } }] });
+    expect(parsed[0].homesteadCode).toBeNull();
+  });
+
+  it('requests the fields cap-class inference needs', () => {
+    const url = buildQueryUrl('1 MAIN ST');
+    for (const f of ['PROPCLASS', 'AVLAND', 'AVIMPROVE', 'DEEDACRES']) {
+      expect(decodeURIComponent(url)).toContain(f);
+    }
+  });
+
+  // Finding 5: `Number(attrs.DEEDACRES) || 0` collapsed garbage/missing
+  // acreage to the same 0 a genuine sub-acre lot reports, which silently
+  // suppressed CapClassPanel's multi-acre-homestead warning for exactly the
+  // parcel most likely to need it (unreadable county data often correlates
+  // with an unusual parcel). An unparseable acreage must be distinguishable
+  // from a real zero.
+  it('reports an unparseable DEEDACRES as null, not a genuine zero', () => {
+    const parsed = parseResponse({
+      features: [{ attributes: { AVTOTGROSS: 350000, DEEDACRES: 'N/A' } }],
+    });
+    expect(parsed[0].deededAcres).toBeNull();
+  });
+
+  it('reports a missing DEEDACRES field as null, not a genuine zero', () => {
+    const parsed = parseResponse({ features: [{ attributes: { AVTOTGROSS: 350000 } }] });
+    expect(parsed[0].deededAcres).toBeNull();
+  });
+
+  it('still reports a genuine zero acreage as 0, distinct from unparseable', () => {
+    const parsed = parseResponse({
+      features: [{ attributes: { AVTOTGROSS: 350000, DEEDACRES: 0 } }],
+    });
+    expect(parsed[0].deededAcres).toBe(0);
+  });
+});

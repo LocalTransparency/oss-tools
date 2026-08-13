@@ -1,42 +1,79 @@
-import type { BillBreakdown, DistrictReferendumConfig, TaxDistrict } from '@/lib/tax/types';
+import type { ReactNode } from 'react';
+import type { AvBuckets, BillBreakdown, DistrictReferendumConfig, TaxDistrict } from '@/lib/tax/types';
 import { buildScenarios, computeAllScenarios } from '@/lib/tax/scenarios';
-import { CIRCUIT_BREAKER_RATE, HOMESTEAD_CREDIT } from '@/lib/tax/indiana/assumptions';
-import { fmtCents, fmtDelta, fmtDollars } from '@/lib/format';
+import { presentCapClasses } from '@/lib/tax/engine';
+import { CAP2_AV_DEDUCTION, CIRCUIT_BREAKER_RATES, HOMESTEAD_CREDIT } from '@/lib/tax/indiana/assumptions';
+import { fmtCents, fmtDelta, fmtDollars, fmtRate } from '@/lib/format';
+import { Projection } from './Projection';
+import { ProjectionErrorBoundary } from './ProjectionErrorBoundary';
 
 interface Props {
   config: DistrictReferendumConfig;
   addressLabel: string | null;
-  grossAV: number;
+  buckets: AvBuckets;
   district: TaxDistrict;
   homestead: boolean;
   assessmentYear: number | null;
   propertyReportUrl: string | null;
 }
 
-function MathRows({ b, config }: { b: BillBreakdown; config: DistrictReferendumConfig }) {
+/**
+ * With per-class caps, a parcel holding value in more than one constitutional
+ * class has a blended cap that no single percentage describes. Name the rate
+ * only when exactly one class carries gross AV; otherwise describe it as a
+ * blend across the classes present.
+ */
+export function circuitBreakerCapLabel(buckets: AvBuckets): string {
+  const present = presentCapClasses(buckets);
+  if (present.length <= 1) {
+    const cls = present[0] ?? 1;
+    return `Circuit breaker cap (${CIRCUIT_BREAKER_RATES.value[cls] * 100}% of gross AV)`;
+  }
+  const pct = present.map((c) => `${CIRCUIT_BREAKER_RATES.value[c] * 100}%`).join('/');
+  return `Circuit breaker cap (blended ${pct} by property class)`;
+}
+
+/** Exact visible text of the Cap 2 deduction row's label, minus any status badge — held as a constant so the row and its tests can't drift apart. */
+export const CAP2_DEDUCTION_LABEL = '− Cap 2 deduction (SEA 1 phase-in)';
+
+function MathRows({ b, buckets, config }: { b: BillBreakdown; buckets: AvBuckets; config: DistrictReferendumConfig }) {
   const { debt, debtEndYear } = config.referendum;
-  const rows: Array<[string, string]> = [
-    ['Gross assessed value', fmtCents(b.grossAV)],
-    ['− Standard homestead deduction', fmtCents(b.standardDeduction)],
-    ['− Supplemental homestead deduction', fmtCents(b.supplementalDeduction)],
-    ['= Net assessed value', fmtCents(b.netAV)],
-    [`Non-referendum tax (rate ${b.nonReferendumRate.toFixed(4)} per $100)`, fmtCents(b.nonReferendumGross)],
-    [`Circuit breaker cap (${CIRCUIT_BREAKER_RATE.value * 100}% of gross AV)`, fmtCents(b.circuitBreakerCap)],
-    ['− Circuit breaker credit', fmtCents(b.circuitBreakerCredit)],
-    [`− Supplemental homestead credit (${HOMESTEAD_CREDIT.value.rate * 100}%, max $${HOMESTEAD_CREDIT.value.max})`, fmtCents(b.supplementalHomesteadCredit)],
-    ['= Non-referendum tax after credits', fmtCents(b.nonReferendumNet)],
-    ['+ School referendum operating tax', fmtCents(b.referendumOperatingTax)],
+  // CAP2_AV_DEDUCTION is `estimated`, not `confirmed` (see
+  // lib/tax/indiana/assumptions.ts) — it must never render as a settled
+  // figure among the confirmed rows around it. Read the status/source off
+  // the config itself, not a hardcoded label, so this self-corrects if the
+  // status is ever promoted to `confirmed`.
+  const cap2Badge = CAP2_AV_DEDUCTION.status !== 'confirmed' ? (
+    <a
+      href={CAP2_AV_DEDUCTION.source}
+      className="ml-1 rounded border border-warning-border bg-warning-bg px-1 align-middle text-[10px] font-normal text-warning-fg no-underline"
+    >
+      {CAP2_AV_DEDUCTION.status}
+    </a>
+  ) : null;
+  const rows: Array<[string, ReactNode, string]> = [
+    ['gross', 'Gross assessed value', fmtCents(b.grossAV)],
+    ['std', '− Standard homestead deduction', fmtCents(b.standardDeduction)],
+    ['suppl', '− Supplemental homestead deduction', fmtCents(b.supplementalDeduction)],
+    ['cap2', <>{CAP2_DEDUCTION_LABEL}{cap2Badge && <> {cap2Badge}</>}</>, fmtCents(b.cap2Deduction)],
+    ['net', '= Net assessed value', fmtCents(b.netAV)],
+    ['nonref', `Non-referendum tax (rate ${b.nonReferendumRate.toFixed(4)} per $100)`, fmtCents(b.nonReferendumGross)],
+    ['cbcap', circuitBreakerCapLabel(buckets), fmtCents(b.circuitBreakerCap)],
+    ['cbcredit', '− Circuit breaker credit', fmtCents(b.circuitBreakerCredit)],
+    ['homecredit', `− Supplemental homestead credit (${HOMESTEAD_CREDIT.value.rate * 100}%, max $${HOMESTEAD_CREDIT.value.max})`, fmtCents(b.supplementalHomesteadCredit)],
+    ['netaftercredits', '= Non-referendum tax after credits', fmtCents(b.nonReferendumNet)],
+    ['refop', '+ School referendum operating tax', fmtCents(b.referendumOperatingTax)],
   ];
   if (debt) {
     const through = debtEndYear ? `, through ${debtEndYear.value}` : '';
-    rows.push([`+ School referendum debt tax ($${debt.value.toFixed(2)}${through})`, fmtCents(b.referendumDebtTax)]);
+    rows.push(['refdebt', `+ School referendum debt tax ($${fmtRate(debt.value)}${through})`, fmtCents(b.referendumDebtTax)]);
   }
-  rows.push(['Total estimated bill', fmtCents(b.total)]);
+  rows.push(['total', 'Total estimated bill', fmtCents(b.total)]);
   return (
     <table className="w-full text-sm">
       <tbody>
-        {rows.map(([label, value]) => (
-          <tr key={label} className="border-b border-border">
+        {rows.map(([key, label, value]) => (
+          <tr key={key} className="border-b border-border">
             <td className="py-1 pr-4">{label}</td>
             <td className="py-1 text-right font-mono tabular-nums">{value}</td>
           </tr>
@@ -47,13 +84,13 @@ function MathRows({ b, config }: { b: BillBreakdown; config: DistrictReferendumC
 }
 
 export default function Results({
-  config, addressLabel, grossAV, district, homestead, assessmentYear, propertyReportUrl,
+  config, addressLabel, buckets, district, homestead, assessmentYear, propertyReportUrl,
 }: Props) {
   const REFERENDUM = config.referendum;
   const SOURCES = config.sources;
   const SCENARIOS = buildScenarios(config);
   const committed = REFERENDUM.committed2027;
-  const r = computeAllScenarios(grossAV, district, config);
+  const r = computeAllScenarios(buckets, district, config);
   const passVsFail = r.passCommitted.total - r.fail.total;
   const passVsFailMax = r.passMax.total - r.fail.total;
 
@@ -85,8 +122,10 @@ export default function Results({
 
       {!homestead && (
         <p className="rounded-md border border-warning-border bg-warning-bg p-3 text-sm text-warning-fg">
-          County records do not show a homestead deduction for this parcel. This estimate
-          assumes an owner-occupied homestead and will not match bills for rentals or second homes.
+          County records do not show a homestead deduction for this parcel, so its cap class
+          was inferred from county parcel attributes rather than a homestead flag. A parcel&rsquo;s
+          value can span more than one class — check the split in the panel above and adjust it
+          if it doesn&rsquo;t match your own records.
         </p>
       )}
 
@@ -104,8 +143,8 @@ export default function Results({
           <div className="text-lg font-mono tabular-nums">{fmtDollars(r.passCommitted.total)}</div>
           <div className="mt-1 text-xs text-muted">
             {committed
-              ? <>at {config.name}&rsquo;s committed 2027 rate (${committed.value.toFixed(2)}); up to {fmtDollars(r.passMax.total)} if the full authorized ${REFERENDUM.proposedMax.value.toFixed(2)} were levied</>
-              : <>at the authorized maximum rate (${REFERENDUM.proposedMax.value.toFixed(2)})</>}
+              ? <>at {config.name}&rsquo;s committed 2027 rate (${fmtRate(committed.value)}); up to {fmtDollars(r.passMax.total)} if the full authorized ${fmtRate(REFERENDUM.proposedMax.value)} were levied</>
+              : <>at the authorized maximum rate (${fmtRate(REFERENDUM.proposedMax.value)})</>}
           </div>
           <p className="mt-2 text-xs text-muted">Change vs. current bill</p>
           <div className="font-mono tabular-nums">{fmtDelta(r.passCommitted.total - r.current.total)}/yr</div>
@@ -128,13 +167,22 @@ export default function Results({
         </p>
       </div>
 
+      {/* projectReferendumLine throws for a schedule year outside the
+          DEDUCTIONS/CAP2_AV_DEDUCTION tables (see lib/tax/projection.ts).
+          The scenario cards above are what a voter most needs and must keep
+          rendering even if a routine data edit to a district's operatingRates
+          breaks this panel — see ProjectionErrorBoundary's doc. */}
+      <ProjectionErrorBoundary>
+        <Projection buckets={buckets} config={config} />
+      </ProjectionErrorBoundary>
+
       <details className="rounded-md border border-border bg-surface p-4">
         <summary className="cursor-pointer font-medium">How this was calculated</summary>
         <div className="mt-4 space-y-6">
           {([r.current, r.passCommitted, r.passMax, r.fail] as const).map((b) => (
             <div key={b.scenario}>
               <h3 className="mb-2 font-medium">{SCENARIOS[b.scenario].label}</h3>
-              <MathRows b={b} config={config} />
+              <MathRows b={b} buckets={buckets} config={config} />
             </div>
           ))}
           <div className="text-xs text-muted space-y-1">
@@ -144,8 +192,8 @@ export default function Results({
             </p>
             {committed && (
               <p>
-                The ${committed.value.toFixed(2)} figure is the district&rsquo;s public commitment for 2027 only — it is not legally
-                binding, and later years may be set higher, up to the authorized ${REFERENDUM.proposedMax.value.toFixed(2)}.{' '}
+                The ${fmtRate(committed.value)} figure is the district&rsquo;s public commitment for 2027 only — it is not legally
+                binding, and later years may be set higher, up to the authorized ${fmtRate(REFERENDUM.proposedMax.value)}.{' '}
                 <a className="text-accent underline" href={committed.source}>Source</a>.
               </p>
             )}

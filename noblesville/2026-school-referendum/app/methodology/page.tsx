@@ -1,12 +1,16 @@
-import { DEDUCTIONS, HOMESTEAD_CREDIT, SOURCES as STATE_SOURCES } from '@/lib/tax/indiana/assumptions';
+import { CAP2_AV_DEDUCTION, DEDUCTIONS, HOMESTEAD_CREDIT, SOURCES as STATE_SOURCES } from '@/lib/tax/indiana/assumptions';
 import { DISTRICTS } from '@/lib/tax/indiana/districts';
 import { NOBLESVILLE } from '@/lib/tax/indiana/districts/noblesville';
+import { fmtRate } from '@/lib/format';
 import Link from 'next/link';
 
 export const metadata = { title: 'Methodology — Hamilton County School Referendum Tax Estimator' };
 
 // Shared source URLs are identical across the Hamilton districts; read them off one config.
 const SHARED = NOBLESVILLE.sources;
+
+/** Percent, rounded to one decimal — avoids floating-point noise like 3.5000000000000004. */
+const pct1 = (fraction: number) => Math.round(fraction * 1000) / 10;
 
 export default function Methodology() {
   const standard2026 = DEDUCTIONS[2026].value.standard.toLocaleString('en-US');
@@ -18,9 +22,28 @@ export default function Methodology() {
 
   // Noblesville is used as a labeled worked example where concrete numbers help.
   const nobRef = NOBLESVILLE.referendum;
-  const nobMax = nobRef.proposedMax.value.toFixed(2);
-  const nobCurrent = nobRef.currentOperating!.value.toFixed(2);
-  const nobCommitted = nobRef.committed2027!.value.toFixed(2);
+  const nobMax = fmtRate(nobRef.proposedMax.value);
+  const nobCurrent = fmtRate(nobRef.currentOperating!.value);
+  const nobCommitted = fmtRate(nobRef.committed2027!.value);
+
+  // The published multi-year projection (Noblesville is the only district with one).
+  const nobProjection = nobRef.projection!;
+  const nobProjectionYears = Object.keys(nobProjection.operatingRates.value).map(Number).sort((a, b) => a - b);
+  const nobBaseYear = nobProjectionYears[0];
+  const nobFirstProjectionYear = nobProjectionYears[1];
+  const nobFinalProjectionYear = nobProjectionYears[nobProjectionYears.length - 1];
+  const nobProjectionSource = nobProjection.operatingRates.source;
+  const nobFirstYearGrowthPct = pct1(nobProjection.avGrowth.value[nobFirstProjectionYear]).toFixed(1);
+  const nobLaterYearsGrowthPct = pct1(nobProjection.avGrowth.value[nobProjectionYears[2]]).toFixed(1);
+  const nobDebtEndLabel = nobRef.debtEndYear?.value ?? 'its final levy year';
+  const nobProjectedYearCount = nobProjectionYears.length - 1;
+
+  // The deduction schedules that feed the projection's out years carry their own
+  // status in config; read it here instead of asserting a fixed claim in prose, so
+  // this section stays accurate whether or not a later task promotes DEDUCTIONS'
+  // out years to `confirmed` (CAP2_AV_DEDUCTION is expected to remain `estimated`).
+  const nobDeductionOutYears = nobProjectionYears.filter((y) => y > nobFirstProjectionYear);
+  const nobDeductionsConfirmed = nobDeductionOutYears.every((y) => DEDUCTIONS[y].status === 'confirmed');
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-6">
@@ -83,9 +106,15 @@ export default function Methodology() {
           - $333k cap-binding threshold: circuit breaker binds when non-referendum tax on pay-2027 net
             AV exceeds the 1% cap on gross AV:
               2.1049% × 0.54 × (AV − 40000) > 1% × AV  →  AV ≈ $333,000
-          - $440k pass-vs-current crossover: referendum tax at the committed 2027 rate on pay-2027 net
-            AV equals referendum tax at the current rate on pay-2026 net AV:
-              0.41% × 0.54 × (AV − 40000) = 0.37% × 0.60 × (AV − 48000)  →  AV ≈ $440,000
+          - Net assessed value alone is equal at exactly $120,000, a closed-form identity:
+              0.60 × (AV − 48000) = 0.54 × (AV − 40000)  →  0.06 × AV = 7200  →  AV = 120,000
+          - $124.9k pass-vs-current total-bill crossover: computed, not solved in closed form — unlike
+            the two thresholds above, the total bill also depends on the non-referendum tax, the
+            circuit-breaker credit, and the supplemental homestead credit, all of which shift with net
+            assessed value too, so there is no simple equation to solve. It sits slightly above the
+            $120,000 net-AV crossover because the pay-2027 combined referendum rate ($0.465) exceeds
+            pay-2026's ($0.45). Guarded to the $120k-$130k bracket by the tests in
+            lib/tax/scenarios.test.ts.
       */}
       <section className="space-y-2">
         <h2 className="text-lg font-medium">Why might my estimate go <em>down</em>{' '}if it passes?</h2>
@@ -113,8 +142,17 @@ export default function Methodology() {
           The exact crossover depends on the district and taxing-district rate. As a worked example, in
           Noblesville City&rsquo;s taxing district (at Noblesville&rsquo;s committed ${nobCommitted} rate) the 1% cap
           already binds above roughly $333,000 of assessed value, and the estimate dips below today&rsquo;s above
-          about $440,000. At a district&rsquo;s authorized <em>maximum</em>, the estimate generally increases at
-          every value — which is why, when a commitment exists, both figures are shown.
+          about $124,900. Above that, the estimate at the district&rsquo;s committed 2027 rate is generally
+          <em> lower</em>{' '}than the current bill, because SEA 1&rsquo;s larger supplemental deduction shrinks net
+          assessed value faster than the referendum rate rises. At a district&rsquo;s authorized <em>maximum</em>,
+          the estimate generally increases at every value — which is why, when a commitment exists, both figures
+          are shown.
+        </p>
+        <p className="text-sm">
+          This comparison holds non-referendum rates at their certified pay-2026 levels, which is
+          flagged <code>estimated</code> throughout. If non-referendum rates rise for pay-2027, the
+          decrease shown here shrinks or reverses. It also compares the whole tax bill; the
+          referendum line by itself rises at every rate above $0.37.
         </p>
       </section>
 
@@ -136,8 +174,92 @@ export default function Methodology() {
         <ul className="list-disc space-y-1 pl-5 text-sm">
           <li>2027 non-referendum rates are not certified until January 2027; we hold them at certified 2026 levels (<a className="text-accent underline" href={SHARED.budgetOrder2026}>2026 budget order</a>).</li>
           <li>Assessed values come from Hamilton County&rsquo;s public parcel data at lookup time and reflect the most recent assessment.</li>
-          <li>This tool models owner-occupied homesteads only (1% cap class). Rentals, farms, and businesses follow different rules.</li>
+          <li>This tool resolves each parcel&rsquo;s constitutional cap class (1% homestead, 2% other residential and agricultural, 3% all other) from Hamilton County&rsquo;s public parcel attributes, applies the matching cap to each class, and applies homestead deductions only to homestead value and the SEA 1 Cap 2 deduction only to cap-2 value. The inference identifies a parcel&rsquo;s dominant class only; it cannot derive how a single parcel&rsquo;s value splits across classes, because Hamilton County&rsquo;s live public parcel service doesn&rsquo;t expose that split (Indiana&rsquo;s statutory PARCEL file does — the county&rsquo;s live feed used here doesn&rsquo;t). You can correct the split yourself in the cap-class panel.</li>
           <li>Other deductions some households have (mortgage age 65+, veteran, etc.) are not modeled and would lower all columns.</li>
+        </ul>
+      </section>
+
+      <section id="projection" className="space-y-2 scroll-mt-4">
+        <h2 className="text-lg font-medium">The multi-year projection</h2>
+        <p className="text-sm">
+          Rates for {nobFirstProjectionYear}–{nobFinalProjectionYear} come from{' '}
+          {NOBLESVILLE.name}&rsquo;s referendum calculator. The district&rsquo;s referendum page
+          states the {nobFirstProjectionYear} rate but publishes no schedule beyond it; the
+          calculator is the source for the full {nobFirstProjectionYear}–{nobFinalProjectionYear}{' '}
+          run.{' '}
+          <a className="text-accent underline" href={nobProjectionSource}>Source</a>.
+        </p>
+        <p className="text-sm">
+          Assessed-value growth defaults to the district&rsquo;s assumption —{' '}
+          {nobFirstYearGrowthPct}% for {nobFirstProjectionYear}, stated as the median annual
+          growth of local existing residential parcels between the Hamilton County {nobBaseYear}
+          {' '}and {nobFirstProjectionYear} certified net assessed value data sets, and{' '}
+          {nobLaterYearsGrowthPct}% each year thereafter. You can change it in the tool.
+        </p>
+        <p className="text-sm">
+          {nobDeductionOutYears[0]}–{nobFinalProjectionYear} also depend on two SEA 1
+          phase-in schedules used to compute net assessed value. The homestead standard and
+          supplemental deduction schedule for those years is{' '}
+          {nobDeductionsConfirmed
+            ? 'confirmed against a primary DLGF source.'
+            : 'still marked estimated, pending primary-source verification.'}
+          {' '}The separate deduction against cap-2 (non-homestead residential and agricultural)
+          assessed value is marked <code>{CAP2_AV_DEDUCTION.status}</code>
+          {CAP2_AV_DEDUCTION.note ? <> — {CAP2_AV_DEDUCTION.note}</> : '.'}
+        </p>
+
+        <h3 className="font-medium">What the projection does not model</h3>
+        <ul className="list-disc space-y-1 pl-5 text-sm">
+          <li>
+            Non-referendum rates beyond pay-{nobFirstProjectionYear}. They are derived from the
+            certified pay-{nobBaseYear} total and held flat, which is flagged{' '}
+            <code>estimated</code>. Projecting them eight years out would let the weakest input
+            dominate every total, so the projection covers the referendum line only — the
+            same scope as the district&rsquo;s calculator.
+          </li>
+          <li>
+            The split of a single parcel&rsquo;s assessed value across the 1%, 2%, and 3% caps.
+            Indiana splits a parcel — a homestead on more than one acre is capped at 1% on
+            the dwelling plus one acre and 2% on the rest. Indiana&rsquo;s statutory PARCEL file
+            (50 IAC 26-20-4) publishes each parcel&rsquo;s assessed value broken out by cap class,
+            but Hamilton County&rsquo;s public parcel service — the live ArcGIS feed this
+            tool queries — does not expose that breakout. The tool infers a dominant class
+            from the total and lets you correct it.
+          </li>
+          <li>
+            Any change in the law after SEA 1 (2025), or any rate a future board actually adopts.
+            The board votes a rate every year.
+          </li>
+        </ul>
+
+        <h3 className="font-medium">How to read the four figures</h3>
+        <p className="text-sm">
+          The tool reports four statistics over the same series. Each describes the{' '}
+          <strong>referendum operating tax only</strong> — the separate debt rate is
+          excluded from all four because it stays on the bill through {nobDebtEndLabel} regardless
+          of whether this referendum passes. They answer different questions and differ
+          substantially, so each is defined exactly:
+        </p>
+        <ul className="list-disc space-y-1 pl-5 text-sm">
+          <li>
+            <strong>{nobFirstProjectionYear} change (operating tax only)</strong> —{' '}
+            {nobFirstProjectionYear}&rsquo;s monthly amount minus {nobBaseYear}&rsquo;s.
+          </li>
+          <li>
+            <strong>Average increase over {nobBaseYear} (operating tax only)</strong> — the
+            mean, across all {nobProjectedYearCount} projected years, of each year&rsquo;s excess
+            over {nobBaseYear}.
+          </li>
+          <li>
+            <strong>{nobFinalProjectionYear} increase (operating tax only)</strong> —{' '}
+            {nobFinalProjectionYear}&rsquo;s monthly amount minus {nobBaseYear}&rsquo;s.
+          </li>
+          <li>
+            <strong>Average year-over-year step (operating tax only)</strong> — the mean of
+            the successive year-to-year differences. This equals the {nobFinalProjectionYear}{' '}
+            increase divided by {nobProjectedYearCount}, and measures how fast the amount grows
+            rather than how far above {nobBaseYear} it sits.
+          </li>
         </ul>
       </section>
 

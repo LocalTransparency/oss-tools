@@ -1,3 +1,10 @@
+/**
+ * Indiana constitutional property-tax caps (IC 6-1.1-20.6). A parcel's AV can
+ * span more than one class; the county's open parcel data does not publish the
+ * allocation, so this tool infers a dominant class and lets the user override.
+ */
+export type CapClass = 1 | 2 | 3;
+
 export interface Sourced<T> {
   value: T;
   source: string;
@@ -5,12 +12,19 @@ export interface Sourced<T> {
   note?: string;
 }
 
+/** Gross assessed value split by constitutional cap class. */
+export interface AvBuckets {
+  cap1: number; // homestead
+  cap2: number; // other residential + agricultural land
+  cap3: number; // all other real and personal property
+}
+
 export type ScenarioId = 'current' | 'passCommitted' | 'passMax' | 'fail';
 
 export interface ScenarioParams {
   id: ScenarioId;
   label: string;
-  payYear: 2026 | 2027;
+  payYear: number; // 2026 or 2027 for hand-picked scenarios; any 2026-2034 year when driving a projection
   standardDeduction: number;
   supplementalRate: number;        // fraction of post-standard remainder, e.g. 0.46
   referendumOperatingRate: number; // per $100 net AV
@@ -35,6 +49,15 @@ export interface DistrictReferendumConfig {
     debt?: Sourced<number>;             // optional — existing referendum debt, if any
     debtEndYear?: Sourced<number>;
     committed2027?: Sourced<number>;    // optional — voluntary public commitment
+    /**
+     * A district's own published multi-year plan, when one exists. Optional:
+     * the other Hamilton County districts have published no schedule, and the
+     * multi-year view renders only where this is present.
+     */
+    projection?: {
+      operatingRates: Sourced<Record<number, number>>; // pay year → operating rate per $100
+      avGrowth: Sourced<Record<number, number>>;       // pay year → assumed AV growth, as a fraction
+    };
     // Plain-language summary of what THIS district's 2026 question actually does —
     // e.g. Carmel repeals BOTH its referendums, while HSE keeps its debt. Rendered
     // above the scenarios so the situation is clear before reading the numbers.
@@ -49,10 +72,11 @@ export interface BillBreakdown {
   grossAV: number;
   standardDeduction: number;
   supplementalDeduction: number;
+  cap2Deduction: number;
   netAV: number;
   nonReferendumRate: number;       // per $100
   nonReferendumGross: number;
-  circuitBreakerCap: number;       // 1% of gross AV
+  circuitBreakerCap: number;       // sum of each class's own cap (1%/2%/3% of that class's gross AV)
   circuitBreakerCredit: number;
   supplementalHomesteadCredit: number;
   nonReferendumNet: number;

@@ -1,9 +1,13 @@
+import type { CapClass } from '../tax/types';
+
 const ENDPOINT =
   'https://services5.arcgis.com/beYj0ONLvCt8qxHA/arcgis/rest/services/Parcels_Current_Open_Data/FeatureServer/0/query';
 
 const OUT_FIELDS = [
   'PARCELNO', 'STPRCLNO', 'LOCADDRESS', 'LOCCITY', 'LOCZIP',
-  'AVTOTGROSS', 'AVTAXYR', 'HOMESTEAD', 'hmstd_code', 'TAXDISTCOD', 'TAXDISTNAM', 'PROPERTYREPORT',
+  'AVTOTGROSS', 'AVLAND', 'AVIMPROVE', 'AVTAXYR', 'DEEDACRES',
+  'HOMESTEAD', 'hmstd_code', 'PROPCLASS',
+  'TAXDISTCOD', 'TAXDISTNAM', 'PROPERTYREPORT',
 ].join(',');
 
 export interface ParcelCandidate {
@@ -17,6 +21,29 @@ export interface ParcelCandidate {
   homestead: boolean;
   taxDistrictName: string;
   propertyReportUrl: string;
+  // Cap-class inference inputs (see lib/tax/indiana/capClass.ts). These are
+  // raw county attributes, not a cap-class conclusion by themselves.
+  homesteadCode: number | null;
+  propertyClass: string;
+  avLand: number;
+  avImprove: number;
+  // null when DEEDACRES is missing or unparseable — distinct from a genuine
+  // zero-acre reading, so a caller (see CapClassPanel.tsx's multi-acre
+  // warning) never mistakes "we don't know" for "we know it's small."
+  deededAcres: number | null;
+}
+
+/**
+ * A ParcelCandidate enriched at API-response time with the cap-class
+ * inference (see lib/tax/indiana/capClass.ts). The lookup route computes
+ * this from the raw fields above; it is never cached in this shape (see
+ * app/api/lookup/route.ts) so a cache-hit and cache-miss response can never
+ * silently diverge.
+ */
+export interface EnrichedParcelCandidate extends ParcelCandidate {
+  capClass: CapClass;
+  capClassConfidence: 'high' | 'low';
+  capClassReason: string;
 }
 
 export function sanitizeSearchTerm(raw: string): string {
@@ -106,6 +133,35 @@ function isHomestead(attrs: Record<string, unknown>): boolean {
   return false;
 }
 
+/**
+ * hmstd_code is an integer flag: 1 = active homestead, 0 = none. Hamilton
+ * County also publishes -1 on thousands of parcels; its meaning is
+ * unconfirmed with the county, so it is preserved verbatim here rather than
+ * collapsed into 0 — callers (see lib/tax/indiana/capClass.ts) lower their
+ * confidence on it instead of silently reading it as non-homestead.
+ */
+function homesteadCodeOf(attrs: Record<string, unknown>): number | null {
+  const code = attrs.hmstd_code;
+  if (typeof code === 'number') return code;
+  if (typeof code === 'string' && code.trim() !== '') {
+    const n = Number(code.trim());
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+/**
+ * DEEDACRES missing or unparseable → null, never 0. `Number(attrs.DEEDACRES)
+ * || 0` used to collapse both cases to the same value a genuine sub-acre lot
+ * reports, which silently withheld CapClassPanel's multi-acre-homestead
+ * warning for exactly the parcel most likely to need it — bad county data
+ * often correlates with an unusual parcel, not a small one.
+ */
+function deededAcresOf(attrs: Record<string, unknown>): number | null {
+  const n = Number(attrs.DEEDACRES);
+  return Number.isFinite(n) ? n : null;
+}
+
 export function parseResponse(json: unknown): ParcelCandidate[] {
   if (!json || typeof json !== 'object') return [];
   const features = (json as { features?: unknown }).features;
@@ -126,6 +182,11 @@ export function parseResponse(json: unknown): ParcelCandidate[] {
       homestead: isHomestead(attrs),
       taxDistrictName: String(attrs.TAXDISTNAM ?? ''),
       propertyReportUrl: String(attrs.PROPERTYREPORT ?? ''),
+      homesteadCode: homesteadCodeOf(attrs),
+      propertyClass: String(attrs.PROPCLASS ?? ''),
+      avLand: Number(attrs.AVLAND) || 0,
+      avImprove: Number(attrs.AVIMPROVE) || 0,
+      deededAcres: deededAcresOf(attrs),
     }];
   });
 }

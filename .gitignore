@@ -5,6 +5,7 @@ playwright-report/
 blob-report/
 *.tsbuildinfo
 next-env.d.ts
+.idea/
 .DS_Store
 .env*
 .superpowers/

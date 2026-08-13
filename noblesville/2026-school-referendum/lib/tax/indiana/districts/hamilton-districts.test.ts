@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { DISTRICTS } from './index';
 import { resolveTaxDistrict } from './resolve';
-import { nonReferendumRate } from '../../engine';
+import { bucketsOf, nonReferendumRate } from '../../engine';
 import { buildScenarios, computeAllScenarios } from '../../scenarios';
+import { DEDUCTIONS, CAP2_AV_DEDUCTION } from '../assumptions';
 
 const ALL = Object.entries(DISTRICTS);
 
@@ -35,11 +36,38 @@ describe('all Hamilton district configs — data integrity', () => {
   });
 });
 
+// Finding 4: a district's operatingRates schedule (lib/tax/indiana/districts/*.ts)
+// and the pay-year assumption tables it draws on (lib/tax/indiana/assumptions.ts)
+// are two files edited independently. The README describes extending a
+// district's operatingRates past 2034 as a routine data edit — but
+// projectReferendumLine throws for any year missing from either table (see
+// lib/tax/projection.ts and lib/tax/engine.ts's computeNetAV), and nothing
+// upstream of that throw caught it before this fix (see
+// components/ProjectionErrorBoundary.tsx for the runtime half of this guard).
+// This test is the loud, pre-deploy half: it fails in CI the moment a
+// projection schedule outruns the assumption tables, instead of a visitor
+// discovering it as a blank page on election week.
+describe('every district\'s projection schedule stays inside the assumption tables (data integrity)', () => {
+  it('every year in operatingRates has a matching DEDUCTIONS and CAP2_AV_DEDUCTION entry', () => {
+    for (const [id, config] of ALL) {
+      const projection = config.referendum.projection;
+      if (!projection) continue;
+      for (const year of Object.keys(projection.operatingRates.value).map(Number)) {
+        expect(DEDUCTIONS[year], `${id}: DEDUCTIONS is missing pay year ${year}`).toBeDefined();
+        expect(
+          CAP2_AV_DEDUCTION.value[year],
+          `${id}: CAP2_AV_DEDUCTION is missing pay year ${year}`,
+        ).toBeDefined();
+      }
+    }
+  });
+});
+
 describe('scenario shape per district', () => {
   it('for a positive-AV homestead, pass-at-max is the highest and fail the lowest total', () => {
     for (const [, config] of ALL) {
       const district = config.taxDistricts[0];
-      const r = computeAllScenarios(350000, district, config);
+      const r = computeAllScenarios(bucketsOf(350000, 1), district, config);
       expect(r.fail.total).toBeLessThanOrEqual(r.current.total);
       expect(r.passMax.total).toBeGreaterThanOrEqual(r.passCommitted.total);
       expect(r.passMax.total).toBeGreaterThan(r.fail.total);

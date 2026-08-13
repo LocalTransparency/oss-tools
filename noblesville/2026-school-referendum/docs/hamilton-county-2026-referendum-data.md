@@ -8,6 +8,10 @@ November 3, 2026 operating referendum: **Noblesville, Hamilton Southeastern, Car
 Sheridan, and Westfield Washington**. Hamilton Heights School Corporation has **no** 2026
 referendum (absent from the DLGF list and the county rate sheet).
 
+Real examples below are identified by parcel number, not street address, matching the
+tool's own privacy posture and `docs/district-calculator-comparison.md`'s convention —
+please keep new examples consistent with this.
+
 ## Shared sources
 
 - **County rate sheet (current rates + certified district totals):** DLGF/Hamilton County
@@ -50,10 +54,61 @@ Determination PDFs live under
   Each district's board sets the annual rate within the ceiling (DLGF spending plans project
   first-year levies well below the max, but no fixed *rate* is committed). Per the
   verified-only rule, leave `committed2027` **absent** for these four — the tool then shows
-  the authorized maximum (our conditional rendering already handles this). Noblesville keeps
-  its published $0.41 commitment.
+  the authorized maximum (our conditional rendering already handles this). Noblesville
+  publicly revised its 2027 commitment **down from $0.41 to $0.385**, announced 2026-08-12
+  (`districtAnnouncement2026_08_12` in `lib/tax/indiana/districts/noblesville.ts`); see the
+  full multi-year schedule below.
   - HSE stated *plan* (~$0.22 rising to ~$0.33 by 2034) and Carmel secondary (~$0.31) are
     **approximate / not board-fixed** — do NOT encode as rates.
+
+### Noblesville's published multi-year rate & growth schedule
+
+Noblesville Schools is the only Hamilton County district with a published multi-year
+plan; the other four districts' commitments are the single first-year figures (or
+absence thereof) noted above. Source: the district's own published calculator,
+<https://noblesvilleschoolsorg.finalsite.com/uploaded/NoblesvilleSchools_ReferendumCalculator.html>,
+retrieved 2026-08-12. Status `public-commitment` throughout — a board vote sets the actual
+rate every year, so nothing below is legally binding, and the schedule never exceeds the
+$0.57 DLGF-authorized maximum.
+
+| Pay year | Operating rate | AV growth assumed for that year |
+|---|---|---|
+| 2026 | $0.370 | — (base year) |
+| 2027 | $0.385 | 5.3% |
+| 2028 | $0.425 | 3.5% |
+| 2029 | $0.465 | 3.5% |
+| 2030 | $0.505 | 3.5% |
+| 2031 | $0.545 | 3.5% |
+| 2032 | $0.545 | 3.5% |
+| 2033 | $0.545 | 3.5% |
+| 2034 | $0.545 | 3.5% |
+
+The rate rises 1.5 cents for 2027, then 4.0 cents per year through 2031, then holds at $0.545 — never reaching the
+$0.57 authorized maximum. The district states its 2027 AV-growth figure (5.3%) as "the
+median annual growth of local existing residential parcels between the Hamilton County 2026
+and 2027 certified net assessed value data sets"; later years hold flat at 3.5%. This tool's
+multi-year projection (`lib/tax/projection.ts`) uses this schedule as its default and lets a
+visitor override the growth assumption. The referendum debt rate ($0.08, through 2032) is
+**not** part of this schedule — the district's calculator does not model debt, and this
+tool's projection keeps that scope for direct comparability (see
+`docs/district-calculator-comparison.md`).
+
+### Deduction schedule status
+
+Statewide SEA 1 (2025) deduction figures live in `lib/tax/indiana/assumptions.ts`, each with
+its own `Sourced` status:
+
+- **Standard homestead deduction (IC 6-1.1-12-37) and supplemental homestead deduction
+  (IC 6-1.1-12-37.5), pay years 2026–2034**, are `confirmed` — 2026–2027 against the DLGF
+  Cockerill memo, 2028–2034 against a second primary source, the DLGF's April 30 2026
+  "Report on Property Tax Exemptions, Deductions, and Abatements."
+- **The Cap 2 AV deduction schedule (non-homestead residential and agricultural land) remains
+  `estimated`, for the whole 2026–2034 record** — `CAP2_AV_DEDUCTION` in
+  `lib/tax/indiana/assumptions.ts` carries a single status for the full table, not a per-year
+  one like `DEDUCTIONS`. Its source is still the Cockerill memo, but the memo's coverage is
+  strongest for the near-term (6% for 2026, 12% for 2027) figures; no primary source
+  confirming the 2028–2034 phase-in (19%, 25%, 30%, 33.4%…) has been found. Do not present
+  any part of this schedule as confirmed.
 
 ## ArcGIS ground truth — actual `TAXDISTNAM` values (Hamilton parcel service)
 
@@ -103,9 +158,14 @@ match**:
 | Noblesville City | `/city/i` | `Noblesville City` | ✅ |
 | Noblesville Township | `/township\|twp/i` | `Noblesville Twp` | ✅ |
 
-Real affected addresses (sampled): `13225 Tegler Dr` (Noblesville FC), `0 Greenfield Ave`
-(Nob Wayne), `14444 Herriman Blvd` (Noblesville SE). The existing test passed only because it
-fed fabricated inputs (`"Noblesville Delaware"` etc.) instead of the real GIS values.
+Real affected parcels (sampled, identified by parcel number — see convention note above):
+parcel `1311230000004401` (Noblesville FC), parcel `1211150000004000` (Nob Wayne — this
+one's street address is shared by 21 distinct parcels across four tax districts, a common
+pattern for platted-but-unaddressed Hamilton County lots, so it doesn't resolve 1:1 the way
+the other two do; `1211150000004000` is one of seven parcels at that address confirmed
+`Nob Wayne`), and parcel `1811190000007002` (Noblesville SE). The existing test passed only
+because it fed fabricated inputs (`"Noblesville Delaware"` etc.) instead of the real GIS
+values.
 
 **Fix:** match on the real `TAXDISTNAM` values, broaden the gisGate to admit `Nob Wayne`, and
 replace the test's fabricated inputs with real values.

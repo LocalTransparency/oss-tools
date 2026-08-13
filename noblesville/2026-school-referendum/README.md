@@ -9,6 +9,17 @@ Washington, Sheridan). Assessed values come from Hamilton County's public parcel
 data at lookup time; nothing a visitor enters is stored or logged. Anonymous
 page-view analytics only; user input never reaches analytics.
 
+The tool infers a parcel's constitutional cap class (1% homestead / 2% other
+residential & agricultural / 3% other, IC 6-1.1-20.6) from the county's
+`PROPCLASS` and `hmstd_code` fields and lets a visitor correct it — the
+county's public feed doesn't expose a parcel's true multi-class AV split, so
+this is a dominant-class estimate, not an allocation. Where a district
+publishes its own multi-year rate plan (currently Noblesville only), a
+year-by-year projection through the referendum's full term shows the
+referendum line growing against the district's own AV-growth assumption,
+cross-checked to the cent against the district's published calculator (see
+[`docs/district-calculator-comparison.md`](docs/district-calculator-comparison.md)).
+
 - Spec: `docs/superpowers/specs/2026-07-15-referendum-tax-app-design.md`
 - Statewide tax law (SEA 1 deductions, circuit breaker, homestead credit), with sources: `lib/tax/indiana/assumptions.ts`
 - Per-district referendum data (rates, commitments, tax districts): `lib/tax/indiana/districts/`
@@ -60,12 +71,42 @@ Express Mode does not auto-deploy on a push. The app serves under its `basePath`
 
 ## Updating numbers
 
-When 2027 rates certify (January 2027) or the district updates its commitments,
-edit `lib/tax/indiana/districts/noblesville.ts` only — every figure carries its
-source URL and a `confirmed | estimated | public-commitment` status that the UI
-displays. Statewide law (deduction schedule, circuit breaker, homestead credit)
-lives separately in `lib/tax/indiana/assumptions.ts` and only changes when the
-legislature does.
+When 2027 rates certify (January 2027) or a district updates its commitments,
+edit that district's file under `lib/tax/indiana/districts/` — every figure
+carries its source URL and a `confirmed | estimated | public-commitment` status
+that the UI displays. Statewide law (deduction schedule, circuit breaker,
+homestead credit) lives separately in `lib/tax/indiana/assumptions.ts` and only
+changes when the legislature does.
+
+**The `projection` block** (currently only on `NOBLESVILLE.referendum.projection`
+— the other four Hamilton districts have published no multi-year schedule, so
+the multi-year view simply doesn't render for them) holds two `Sourced<Record<number, number>>`
+maps, `operatingRates` and `avGrowth`, keyed by pay year. When the district
+revises either schedule, update both maps together with a fresh `source` URL,
+`status`, and retrieval-dated `note` — `projectReferendumLine` and the
+multi-year UI (`components/Projection.tsx`) read these directly, so no other
+code changes. `lib/tax/indiana/districts/noblesville.test.ts` asserts the block
+is present and every year 2026–2034 is covered; extend that test if the term
+length ever changes.
+
+**Refreshing `districtCalculator.fixture.ts`** (test-only — never imported from
+application code): when the district republishes its calculator, re-download
+the HTML from the URL in the fixture's header comment, find its `<script>`
+config block (the `av`/`rate`/deduction constants inline in the page), and
+update `DISTRICT_AV_GROWTH`, `DISTRICT_RATES`, `DISTRICT_YEARS`, `DISTRICT_HD`,
+`DISTRICT_SH_PCT`, and `DISTRICT_CAP2_PCT` to match exactly — this file is a
+verbatim transcription, not a paraphrase, so partial or rounded updates will
+silently break the cross-check. Update the "Retrieved" date in the same
+comment. After updating, run `npm run test`:
+`districtCalculator.test.ts`'s first two `it`s assert the *config* transcribes
+the same constants (so `noblesville.ts`'s `projection` block and the fixture
+can't silently drift apart), and the parametrized `it`s re-verify the $0.01
+agreement described in
+[`docs/district-calculator-comparison.md`](docs/district-calculator-comparison.md)
+across six synthetic AV cases. If either district changes its formula (not
+just its constants), the reduced `districtCalculatorAnnual` function itself
+needs updating to match — re-derive it from the new page's script rather than
+patching individual numbers.
 
 ## Adding a district
 
