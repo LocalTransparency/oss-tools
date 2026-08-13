@@ -66,6 +66,20 @@ export function totalGrossAV(b: AvBuckets): number {
 }
 
 /**
+ * Which cap classes actually carry gross AV, in class order. Shared by
+ * Results.tsx's circuitBreakerCapLabel and CapClassPanel's headline so both
+ * describe a split parcel the same way — "blended"/"split across" — instead
+ * of drifting into two different wordings for the same fact. Derived from
+ * the live AvBuckets (what the visitor has actually set), never from the
+ * cap-class inference, which only describes the parcel's DOMINANT class at
+ * lookup time and goes stale the moment the buckets are edited.
+ */
+export function presentCapClasses(buckets: AvBuckets): CapClass[] {
+  const grossByClass: Record<CapClass, number> = { 1: buckets.cap1, 2: buckets.cap2, 3: buckets.cap3 };
+  return (VALID_CAP_CLASSES as CapClass[]).filter((c) => grossByClass[c] > 0);
+}
+
+/**
  * Floors every bucket at zero. This is the real backstop against a negative
  * bucket — from a mistyped growth rate compounding an AV negative (see
  * projectReferendumLine), or a negative value reaching computeBill directly —

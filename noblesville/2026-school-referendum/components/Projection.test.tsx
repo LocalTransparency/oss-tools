@@ -21,13 +21,13 @@ describe('Projection', () => {
     expect(screen.queryByText('0.39')).not.toBeInTheDocument();
   });
 
-  it('labels all four statistics distinctly', () => {
-    render(<Projection buckets={buckets} config={NOBLESVILLE} />);
-    const stats = screen.getByRole('list', { name: /how to read these figures/i });
-    expect(within(stats).getByText(/average year-over-year step/i)).toBeInTheDocument();
-    expect(within(stats).getByText(/average increase over 2026/i)).toBeInTheDocument();
-    expect(within(stats).getByText(/2034/)).toBeInTheDocument();
-  });
+  // Finding I (minor): a prior version of this test only checked two
+  // substrings and a bare /2034/ — an assertion that can't fail without also
+  // failing the more precise tests below (which check all four statistics'
+  // labels AND their rendered dollar values), so it was deleted rather than
+  // kept as dead weight that reads as coverage. See the
+  // "operating-only labelling" and "operating-vs-combined arithmetic" describe
+  // blocks below for the tests that actually cover this.
 
   it('attributes the growth assumption to the district and lets it be changed', async () => {
     render(<Projection buckets={buckets} config={NOBLESVILLE} />);
@@ -154,6 +154,17 @@ describe('operating-vs-combined arithmetic reconciles (must not silently regress
     expect(averageStep * 8).toBeCloseTo(finalYearIncrease, 1);
     expect(averageStep).toBe(1.88);
   });
+
+  // Finding C (critical): only finalYearIncrease and averageYearOverYearStep
+  // were pinned to a value above; firstYearChange and averageIncreaseVsBase
+  // had no value assertion anywhere, so swapping their rendered figures left
+  // both suites green — the exact decorative-guard pattern this describe
+  // block otherwise exists to prevent. Pin both remaining statistics too.
+  it('pins the 2027 change and the average-increase-over-2026 statistics', () => {
+    render(<Projection buckets={buckets} config={NOBLESVILLE} />);
+    expect(dollarsIn(statLine(/2027 change/i))).toBe(1.05);
+    expect(dollarsIn(statLine(/average increase over 2026/i))).toBe(8.19);
+  });
 });
 
 // Finding 1 (critical): the growth fields carried only step="0.1", no
@@ -206,6 +217,30 @@ describe('growth override rejects an out-of-range entry with a visible message (
     const input = screen.getByLabelText(/growth after 2027/i);
     expect(input).toHaveAttribute('min', '-20');
     expect(input).toHaveAttribute('max', '20');
+  });
+});
+
+// Finding D (important): operatingRates carries status: 'public-commitment'
+// and a note that it is not legally binding and the board votes a rate
+// annually — but that note was never rendered anywhere near the table, so a
+// voter reading the 2031-2034 rows had no way to know the board could
+// lawfully exceed them, up to the authorized ceiling. The caveat must be
+// visible next to the schedule's own Source link (not buried in a collapsed
+// <details> that only ever spoke about 2027), and it must name the real
+// ceiling, not a vague "may change."
+describe('the published schedule is disclosed as non-binding (Finding D)', () => {
+  it('states the schedule is a public commitment, not binding, and names the authorized ceiling', () => {
+    render(<Projection buckets={buckets} config={NOBLESVILLE} />);
+    expect(screen.getByText(/not a legally binding rate/i)).toBeInTheDocument();
+    expect(screen.getByText(/board votes a rate every year/i)).toBeInTheDocument();
+    expect(screen.getByText(/authorized \$0\.57/)).toBeInTheDocument();
+  });
+
+  it('covers the out years (2031-2034), not just 2027', () => {
+    render(<Projection buckets={buckets} config={NOBLESVILLE} />);
+    const caveat = screen.getByText(/could set any year shown here/i).closest('p')!;
+    expect(caveat).toHaveTextContent(/2027/);
+    expect(caveat).toHaveTextContent(/2034/);
   });
 });
 

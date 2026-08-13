@@ -7,6 +7,20 @@ export interface CapClassInference {
 }
 
 /**
+ * True only when `confidence` and `reason` are actually well-formed. Mirrors
+ * isValidCapClass in lib/tax/engine.ts: capClass, capClassConfidence, and
+ * capClassReason all cross the same untyped `/api/lookup` JSON boundary (see
+ * EnrichedParcelCandidate in lib/lookup/arcgis.ts), so a valid capClass alone
+ * does not make the other two trustworthy. Calculator.tsx must check all
+ * three before treating the API's disclosure as real — a valid class with a
+ * missing/empty reason would otherwise render CapClassPanel's disclosure
+ * paragraph empty, silently dropping the explanation the visitor is owed.
+ */
+export function isValidCapInferenceFields(confidence: unknown, reason: unknown): confidence is 'high' | 'low' {
+  return (confidence === 'high' || confidence === 'low') && typeof reason === 'string' && reason.trim().length > 0;
+}
+
+/**
  * Infers a parcel's DOMINANT constitutional cap class (IC 6-1.1-20.6) from
  * Hamilton County's public parcel attributes.
  *

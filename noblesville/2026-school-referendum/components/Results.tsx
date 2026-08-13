@@ -1,6 +1,8 @@
-import type { AvBuckets, BillBreakdown, CapClass, DistrictReferendumConfig, TaxDistrict } from '@/lib/tax/types';
+import type { ReactNode } from 'react';
+import type { AvBuckets, BillBreakdown, DistrictReferendumConfig, TaxDistrict } from '@/lib/tax/types';
 import { buildScenarios, computeAllScenarios } from '@/lib/tax/scenarios';
-import { CIRCUIT_BREAKER_RATES, HOMESTEAD_CREDIT } from '@/lib/tax/indiana/assumptions';
+import { presentCapClasses } from '@/lib/tax/engine';
+import { CAP2_AV_DEDUCTION, CIRCUIT_BREAKER_RATES, HOMESTEAD_CREDIT } from '@/lib/tax/indiana/assumptions';
 import { fmtCents, fmtDelta, fmtDollars, fmtRate } from '@/lib/format';
 import { Projection } from './Projection';
 import { ProjectionErrorBoundary } from './ProjectionErrorBoundary';
@@ -22,8 +24,7 @@ interface Props {
  * blend across the classes present.
  */
 export function circuitBreakerCapLabel(buckets: AvBuckets): string {
-  const grossByClass: Record<CapClass, number> = { 1: buckets.cap1, 2: buckets.cap2, 3: buckets.cap3 };
-  const present = ([1, 2, 3] as CapClass[]).filter((c) => grossByClass[c] > 0);
+  const present = presentCapClasses(buckets);
   if (present.length <= 1) {
     const cls = present[0] ?? 1;
     return `Circuit breaker cap (${CIRCUIT_BREAKER_RATES.value[cls] * 100}% of gross AV)`;
@@ -32,31 +33,47 @@ export function circuitBreakerCapLabel(buckets: AvBuckets): string {
   return `Circuit breaker cap (blended ${pct} by property class)`;
 }
 
+/** Exact visible text of the Cap 2 deduction row's label, minus any status badge — held as a constant so the row and its tests can't drift apart. */
+export const CAP2_DEDUCTION_LABEL = '− Cap 2 deduction (SEA 1 phase-in)';
+
 function MathRows({ b, buckets, config }: { b: BillBreakdown; buckets: AvBuckets; config: DistrictReferendumConfig }) {
   const { debt, debtEndYear } = config.referendum;
-  const rows: Array<[string, string]> = [
-    ['Gross assessed value', fmtCents(b.grossAV)],
-    ['− Standard homestead deduction', fmtCents(b.standardDeduction)],
-    ['− Supplemental homestead deduction', fmtCents(b.supplementalDeduction)],
-    ['− Cap 2 deduction (SEA 1 phase-in)', fmtCents(b.cap2Deduction)],
-    ['= Net assessed value', fmtCents(b.netAV)],
-    [`Non-referendum tax (rate ${b.nonReferendumRate.toFixed(4)} per $100)`, fmtCents(b.nonReferendumGross)],
-    [circuitBreakerCapLabel(buckets), fmtCents(b.circuitBreakerCap)],
-    ['− Circuit breaker credit', fmtCents(b.circuitBreakerCredit)],
-    [`− Supplemental homestead credit (${HOMESTEAD_CREDIT.value.rate * 100}%, max $${HOMESTEAD_CREDIT.value.max})`, fmtCents(b.supplementalHomesteadCredit)],
-    ['= Non-referendum tax after credits', fmtCents(b.nonReferendumNet)],
-    ['+ School referendum operating tax', fmtCents(b.referendumOperatingTax)],
+  // CAP2_AV_DEDUCTION is `estimated`, not `confirmed` (see
+  // lib/tax/indiana/assumptions.ts) — it must never render as a settled
+  // figure among the confirmed rows around it. Read the status/source off
+  // the config itself, not a hardcoded label, so this self-corrects if the
+  // status is ever promoted to `confirmed`.
+  const cap2Badge = CAP2_AV_DEDUCTION.status !== 'confirmed' ? (
+    <a
+      href={CAP2_AV_DEDUCTION.source}
+      className="ml-1 rounded border border-warning-border bg-warning-bg px-1 align-middle text-[10px] font-normal text-warning-fg no-underline"
+    >
+      {CAP2_AV_DEDUCTION.status}
+    </a>
+  ) : null;
+  const rows: Array<[string, ReactNode, string]> = [
+    ['gross', 'Gross assessed value', fmtCents(b.grossAV)],
+    ['std', '− Standard homestead deduction', fmtCents(b.standardDeduction)],
+    ['suppl', '− Supplemental homestead deduction', fmtCents(b.supplementalDeduction)],
+    ['cap2', <>{CAP2_DEDUCTION_LABEL}{cap2Badge && <> {cap2Badge}</>}</>, fmtCents(b.cap2Deduction)],
+    ['net', '= Net assessed value', fmtCents(b.netAV)],
+    ['nonref', `Non-referendum tax (rate ${b.nonReferendumRate.toFixed(4)} per $100)`, fmtCents(b.nonReferendumGross)],
+    ['cbcap', circuitBreakerCapLabel(buckets), fmtCents(b.circuitBreakerCap)],
+    ['cbcredit', '− Circuit breaker credit', fmtCents(b.circuitBreakerCredit)],
+    ['homecredit', `− Supplemental homestead credit (${HOMESTEAD_CREDIT.value.rate * 100}%, max $${HOMESTEAD_CREDIT.value.max})`, fmtCents(b.supplementalHomesteadCredit)],
+    ['netaftercredits', '= Non-referendum tax after credits', fmtCents(b.nonReferendumNet)],
+    ['refop', '+ School referendum operating tax', fmtCents(b.referendumOperatingTax)],
   ];
   if (debt) {
     const through = debtEndYear ? `, through ${debtEndYear.value}` : '';
-    rows.push([`+ School referendum debt tax ($${fmtRate(debt.value)}${through})`, fmtCents(b.referendumDebtTax)]);
+    rows.push(['refdebt', `+ School referendum debt tax ($${fmtRate(debt.value)}${through})`, fmtCents(b.referendumDebtTax)]);
   }
-  rows.push(['Total estimated bill', fmtCents(b.total)]);
+  rows.push(['total', 'Total estimated bill', fmtCents(b.total)]);
   return (
     <table className="w-full text-sm">
       <tbody>
-        {rows.map(([label, value]) => (
-          <tr key={label} className="border-b border-border">
+        {rows.map(([key, label, value]) => (
+          <tr key={key} className="border-b border-border">
             <td className="py-1 pr-4">{label}</td>
             <td className="py-1 text-right font-mono tabular-nums">{value}</td>
           </tr>

@@ -6,7 +6,7 @@ import { DISTRICTS } from '@/lib/tax/indiana/districts';
 import { resolveTaxDistrict } from '@/lib/tax/indiana/districts/resolve';
 import { nameUncoveredDistrict } from '@/lib/tax/indiana/counties/hamilton';
 import { assertBucketsConsistent, bucketsOf, isValidCapClass } from '@/lib/tax/engine';
-import type { CapClassInference } from '@/lib/tax/indiana/capClass';
+import { isValidCapInferenceFields, type CapClassInference } from '@/lib/tax/indiana/capClass';
 import type { AvBuckets, DistrictReferendumConfig, TaxDistrict } from '@/lib/tax/types';
 import { fmtDollars } from '@/lib/format';
 import { CapClassPanel } from './CapClassPanel';
@@ -168,12 +168,14 @@ export default function Calculator() {
     setBuckets(parcelBuckets);
     // capClassConfidence/capClassReason are as untrustworthy at runtime as
     // capClass itself — the same JSON boundary, the same missing-field risk.
-    // Trust all three together only when capClass itself checks out;
-    // otherwise show the same explicit "we don't know" panel state as
-    // manual entry rather than rendering fields built from data that may
-    // not be there.
+    // Trust all three together only when ALL THREE check out (Finding H: a
+    // valid capClass with a missing/empty reason previously still rendered,
+    // leaving CapClassPanel's disclosure paragraph empty where the
+    // explanation belongs); otherwise show the same explicit "we don't know"
+    // panel state as manual entry rather than rendering fields built from
+    // data that may not be there.
     setCapInference(
-      isValidCapClass(parcel.capClass)
+      isValidCapClass(parcel.capClass) && isValidCapInferenceFields(parcel.capClassConfidence, parcel.capClassReason)
         ? { capClass: parcel.capClass, confidence: parcel.capClassConfidence, reason: parcel.capClassReason }
         : FALLBACK_API_CAP_INFERENCE,
     );

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { AvBuckets, DistrictReferendumConfig } from '@/lib/tax/types';
 import { projectReferendumLine, projectionStats } from '@/lib/tax/projection';
+import { nextFieldOverride } from '@/lib/fieldOverride';
 import { fmtCents, fmtRate } from '@/lib/format';
 import { ProjectionChart } from './ProjectionChart';
 
@@ -16,18 +17,10 @@ const pct1 = (fraction: number) => Math.round(fraction * 1000) / 10;
 
 /**
  * A growth override holds the field's raw text separately from the number the
- * projection actually uses.
- *
- * They have to be separate because a half-typed entry is not a rate. `Number('')`
- * is 0 and finite, so clearing the field to type a new figure would otherwise read
- * as "0% growth" and swing every projected year while the user's cursor is still
- * in the box. `'-'` and `'3.'` are the same problem mid-keystroke.
- *
- * So `text` is whatever is in the field, and `value` only advances when the field
- * parses to a real number — leaving the table steady until the entry means
- * something. `outOfRange` is the twin case for a NUMBER that parses fine but is
- * not a plausible assessed-value growth rate (e.g. -150, meant as -1.5% and
- * mistyped) — see MIN_GROWTH_PCT/MAX_GROWTH_PCT below.
+ * projection actually uses — see lib/fieldOverride.ts for why. `outOfRange`
+ * is the twin case for a NUMBER that parses fine but is not a plausible
+ * assessed-value growth rate (e.g. -150, meant as -1.5% and mistyped) — see
+ * MIN_GROWTH_PCT/MAX_GROWTH_PCT below.
  */
 interface PctOverride {
   text: string;
@@ -55,11 +48,8 @@ const MAX_GROWTH_PCT = 20;
  * is flagged distinctly so the caller can show why nothing moved.
  */
 const nextOverride = (raw: string, previous: PctOverride | null, fallback: number): PctOverride => {
-  const n = Number(raw);
-  const parseable = raw.trim() !== '' && Number.isFinite(n);
-  const outOfRange = parseable && (n < MIN_GROWTH_PCT || n > MAX_GROWTH_PCT);
-  const advance = parseable && !outOfRange;
-  return { text: raw, value: advance ? n : previous?.value ?? fallback, outOfRange };
+  const field = nextFieldOverride(raw, previous, fallback, (n) => n >= MIN_GROWTH_PCT && n <= MAX_GROWTH_PCT);
+  return { text: field.text, value: field.value, outOfRange: field.parseable && !field.valid };
 };
 
 /**
@@ -134,6 +124,24 @@ export function Projection({ buckets, config }: Props) {
           {firstProjectedYear} and {laterYearsDefault.toFixed(1)}% each year after that.{' '}
           <a className="text-accent underline" href={projection.avGrowth.source}>Source</a>.
         </p>
+        {/* Finding D: operatingRates.status is 'public-commitment', not
+            'confirmed' — the board votes a rate each year and can lawfully
+            set any year, including the out years through {finalYear}, as
+            high as the authorized maximum. That caveat previously lived only
+            in a collapsed <details> elsewhere on the page and spoke only to
+            2027, leaving every row in THIS table read as settled. Render it
+            here, next to the schedule's own Source link, driven by the
+            config's live status/note so it disappears on its own if the
+            status is ever promoted to 'confirmed'. */}
+        {projection.operatingRates.status !== 'confirmed' && (
+          <p className="mt-1 text-sm text-muted">
+            This schedule is {config.name}&rsquo;s public commitment, not a legally binding rate:
+            the board votes a rate every year and could set any year shown here — including{' '}
+            {firstProjectedYear}&ndash;{finalYear} — as high as the authorized $
+            {fmtRate(config.referendum.proposedMax.value)}.{' '}
+            <a className="text-accent underline" href={projection.operatingRates.source}>Source</a>.
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap items-end gap-3 text-sm">

@@ -135,3 +135,82 @@ describe('CapClassPanel', () => {
     expect(previouslyExploitedBill.total).toBe(legitimateZeroBill.total);
   });
 });
+
+// Finding A (critical): the headline used to be derived from `inference`,
+// which is set once at parcel selection and never updated. Following this
+// panel's own "Adjust the split" prompt to correct a misclassified parcel
+// left the headline still insisting the WHOLE parcel was under the
+// original single class — contradicting Results.tsx's blended-cap label for
+// the exact same buckets. The headline must be derived from the live
+// buckets instead.
+describe('the headline reflects the live buckets, not the stale inference (Finding A)', () => {
+  it('says the value is split across classes once the buckets straddle two classes, even though inference still names only class 1', () => {
+    render(
+      <CapClassPanel
+        {...base}
+        value={{ cap1: 150000, cap2: 200000, cap3: 0 }}
+        inference={{ ...base.inference, capClass: 1 }}
+        onChange={() => {}}
+      />,
+    );
+    expect(screen.getByText(/split across/i)).toBeInTheDocument();
+    expect(screen.getByText(/1%\/2%/)).toBeInTheDocument();
+    // Must not still claim the whole parcel is under a single cap.
+    expect(screen.queryByText(/treated under the state.s/i)).not.toBeInTheDocument();
+  });
+
+  it('hides the multi-acre prompt once value has actually moved into cap 2, even on a multi-acre parcel', () => {
+    render(
+      <CapClassPanel
+        {...base}
+        value={{ cap1: 150000, cap2: 200000, cap3: 0 }}
+        deededAcres={5.68}
+        onChange={() => {}}
+      />,
+    );
+    expect(screen.queryByText(/dwelling plus one acre/i)).not.toBeInTheDocument();
+  });
+
+  it('still shows the multi-acre prompt when the split has not moved anything into cap 2 yet', () => {
+    render(<CapClassPanel {...base} deededAcres={5.68} onChange={() => {}} />);
+    expect(screen.getByText(/dwelling plus one acre/i)).toBeInTheDocument();
+  });
+});
+
+// Finding G (minor): the override inputs round-tripped every keystroke
+// through Number(), so clearing a field yielded "" → 0 → wrote back "0",
+// and the next keystroke landed after that leading zero; a typed "." was
+// silently dropped because it parses to the same number as before it. Fixed
+// by reusing Projection.tsx's text/value split (lib/fieldOverride.ts): the
+// input displays exactly what was typed until it parses, rather than a
+// string re-derived from the committed number.
+describe('override inputs preserve raw typed text (Finding G)', () => {
+  it('clearing a field leaves it empty instead of snapping back to "0"', async () => {
+    render(<CapClassPanel {...base} onChange={() => {}} />);
+    await userEvent.click(screen.getByRole('button', { name: /adjust/i }));
+    const cap1 = screen.getByLabelText(/1% cap/i);
+    await userEvent.clear(cap1);
+    expect(cap1).toHaveValue('');
+  });
+
+  it('typing after clearing does not pick up a stray leading zero', async () => {
+    const onChange = vi.fn();
+    render(
+      <Harness initial={base.value} inference={base.inference} deededAcres={base.deededAcres} onChange={onChange} />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: /adjust/i }));
+    const cap1 = screen.getByLabelText(/1% cap/i);
+    await userEvent.clear(cap1);
+    await userEvent.type(cap1, '7');
+    expect(cap1).toHaveValue('7');
+    expect(onChange).toHaveBeenLastCalledWith({ cap1: 7, cap2: 0, cap3: 0 });
+  });
+
+  it('a typed decimal point is not silently dropped mid-entry', () => {
+    render(<CapClassPanel {...base} onChange={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: /adjust/i }));
+    const cap1 = screen.getByLabelText(/1% cap/i);
+    fireEvent.change(cap1, { target: { value: '350000.' } });
+    expect(cap1).toHaveValue('350000.');
+  });
+});

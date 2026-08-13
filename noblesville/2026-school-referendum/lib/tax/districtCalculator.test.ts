@@ -39,22 +39,26 @@ describe('projection agrees with the district\'s model on the operating line', (
 });
 
 describe('known, deliberate divergences from the district\'s model', () => {
-  it('this engine caps the supplemental deduction at 75% of gross AV; theirs does not', () => {
-    // A homestead small enough for 0.667 × (AV − 0) to exceed 0.75 × AV cannot
-    // occur, but the cap is enforced and asserted so a future schedule change
-    // surfaces here rather than silently diverging.
-    const ours = projectReferendumLine(bucketsOf(60000, 1), NOBLESVILLE);
-    for (const row of ours) expect(row.netAV).toBeGreaterThanOrEqual(0);
-  });
-
-  it('this engine floors each bucket at zero; theirs can go negative', () => {
-    const theirs = districtCalculatorAnnual(10000);
-    const ours = projectReferendumLine(bucketsOf(10000, 1), NOBLESVILLE);
-    // 2026: their model yields (10000 − 10000) × 0.6 = 0 as well, so this
-    // asserts the floor holds rather than a specific divergence.
-    for (const row of ours) expect(row.netAV).toBeGreaterThanOrEqual(0);
-    expect(Object.values(theirs).every((v) => Number.isFinite(v))).toBe(true);
-  });
+  // Finding I (minor): two tests previously lived here —
+  // "this engine caps the supplemental deduction at 75%..." and "this engine
+  // floors each bucket at zero...". Both asserted `row.netAV >=
+  // 0`/`Number.isFinite(theirs)`, floors that `computeNetAV` guarantees
+  // unconditionally via `Math.max(0, ...)` on every code path — no mutation
+  // to this tool's production code could ever make either assertion fail, so
+  // they passed against any implementation and provided no signal. Deleted
+  // rather than kept as dead weight that reads as coverage:
+  //   - the 75%-cap divergence is now meaningfully tested (with an
+  //     assertion that CAN fail) in lib/tax/engine.test.ts, by driving
+  //     supplementalRate synthetically past 0.75;
+  //   - the floor-at-zero behavior is meaningfully tested (again, an
+  //     assertion that CAN fail, using raw negative buckets that bypass any
+  //     clamping upstream) in lib/tax/engine.test.ts's "negative buckets
+  //     never manufacture a positive net AV" block.
+  // Constructing a replacement here that could fail would require either
+  // duplicating those existing engine.test.ts assertions, or asserting a
+  // property of `districtCalculatorAnnual` itself (the fixture) rather than
+  // of this tool — the same problem the deleted Number.isFinite(theirs)
+  // check had.
 
   it('this tool projects the referendum debt rate, which the district\'s calculator omits', () => {
     const ours = projectReferendumLine(bucketsOf(350000, 1), NOBLESVILLE);

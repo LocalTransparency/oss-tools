@@ -28,9 +28,24 @@ describe('computeNetAV', () => {
     expect(r.netAV).toBe(0);
   });
 
-  it('supplemental deduction never exceeds 75% of gross AV (cannot bind with current params, but enforced)', () => {
-    const r = computeNetAV(bucketsOf(1000000, 1), SCENARIOS.passCommitted);
-    expect(r.supplementalDeduction).toBeLessThanOrEqual(0.75 * 1000000);
+  // Finding I (minor): the original version of this test compared against
+  // `0.75 * 1000000` using SCENARIOS.passCommitted's real supplementalRate
+  // (0.46) — an inequality that holds for ANY implementation, since no real
+  // schedule value comes close to 75%, so it could never fail even if the
+  // cap in computeNetAV were deleted outright. Kept as a schedule-change
+  // tripwire per the finding, but now actually exercises the cap by driving
+  // supplementalRate past 0.75 in a synthetic scenario, where an uncapped
+  // computation WOULD exceed 75% and this assertion WOULD fail if the cap
+  // were removed.
+  it('supplemental deduction is capped at 75% of gross AV, enforced even when the rate itself would exceed it', () => {
+    const grossAV = 1000000;
+    const overRate = { ...SCENARIOS.passCommitted, supplementalRate: 0.9 };
+    const r = computeNetAV(bucketsOf(grossAV, 1), overRate);
+    // Uncapped, 90% of the post-standard-deduction remainder would exceed
+    // 75% of gross AV — this is the case SUPP_DEDUCTION_CAP_RATE exists for.
+    const uncapped = (grossAV - overRate.standardDeduction) * overRate.supplementalRate;
+    expect(uncapped).toBeGreaterThan(0.75 * grossAV);
+    expect(r.supplementalDeduction).toBeCloseTo(0.75 * grossAV, 2);
   });
 });
 
