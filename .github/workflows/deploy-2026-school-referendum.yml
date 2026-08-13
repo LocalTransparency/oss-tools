@@ -41,6 +41,32 @@ jobs:
             --cluster localtransparency \
             --service calculator-2026-school-referendum \
             --force-new-deployment >/dev/null
-          aws ecs wait services-stable \
-            --cluster localtransparency \
-            --services calculator-2026-school-referendum
+
+          # Not `aws ecs wait services-stable`: it polls every 15s and gives up
+          # after 40 checks — a hard-coded 10 minutes, with no flag to raise it.
+          # The CMS deploy has already failed that way on a rollout that then
+          # completed normally; this service is quicker to boot but runs the same
+          # race. A red build over a healthy deploy is worse than a slow one: it
+          # invites someone to "fix" a production service that was never broken.
+          #
+          # Poll the rollout state instead. It is authoritative, and it tells the
+          # three outcomes apart — done, failed, still going — rather than
+          # collapsing all of them into one timeout.
+          deadline=$(( SECONDS + 1800 ))
+          while true; do
+            line=$(aws ecs describe-services \
+              --cluster localtransparency --services calculator-2026-school-referendum \
+              --query 'services[0].deployments[?status==`PRIMARY`] | [0].[rolloutState,rolloutStateReason]' \
+              --output text 2>/dev/null || true)
+            state=$(printf '%s' "$line" | cut -f1)
+            reason=$(printf '%s' "$line" | cut -f2-)
+            case "$state" in
+              COMPLETED) echo "rollout completed: $reason"; exit 0 ;;
+              FAILED)    echo "::error::ECS rollout failed: $reason"; exit 1 ;;
+            esac
+            if [ "$SECONDS" -gt "$deadline" ]; then
+              echo "::error::rollout still '${state:-unknown}' after 30 minutes: $reason"
+              exit 1
+            fi
+            sleep 15
+          done
