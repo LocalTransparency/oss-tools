@@ -155,3 +155,39 @@ describe('operating-vs-combined arithmetic reconciles (must not silently regress
     expect(averageStep).toBe(1.88);
   });
 });
+
+describe('growth override tolerates a half-typed entry', () => {
+  const cellText = (year: number, col: number) => {
+    const row = within(screen.getByRole('table')).getByText(String(year)).closest('tr')!;
+    return within(row).getAllByRole('cell')[col].textContent!;
+  };
+  // Cell order matches the JSX in Projection.tsx (the year sits in a <th>):
+  // [grossAV, netAV, operatingRate, operatingTax/mo, debtRate, debtTax/mo, total/mo, vsBase/mo]
+  const OPERATING_MO = 3;
+
+  it('clearing the field leaves the projection on the last real figure', async () => {
+    render(<Projection buckets={buckets} config={NOBLESVILLE} />);
+    const before = cellText(2034, OPERATING_MO);
+
+    const input = screen.getByLabelText(/growth after 2027/i);
+    await userEvent.clear(input);
+
+    // An empty box is a keystroke, not an assumption. Number('') is 0 and
+    // finite, so a naive parse would read this as "0% growth" and swing every
+    // projected year while the cursor is still in the field.
+    expect(input).toHaveValue(null);
+    expect(cellText(2034, OPERATING_MO)).toBe(before);
+  });
+
+  it('recomputes once the entry parses to a number', async () => {
+    render(<Projection buckets={buckets} config={NOBLESVILLE} />);
+    const before = cellText(2034, OPERATING_MO);
+
+    const input = screen.getByLabelText(/growth after 2027/i);
+    await userEvent.clear(input);
+    await userEvent.type(input, '0');
+
+    // 0% growth after 2027 is a real answer, and differs from the district's 3.5%.
+    expect(cellText(2034, OPERATING_MO)).not.toBe(before);
+  });
+});

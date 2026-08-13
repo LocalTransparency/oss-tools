@@ -14,11 +14,29 @@ interface Props {
 /** Percent, rounded to one decimal — avoids floating-point noise like 3.5000000000000004. */
 const pct1 = (fraction: number) => Math.round(fraction * 1000) / 10;
 
-// A non-numeric or partial entry (e.g. clearing the field mid-edit) must not
-// propagate NaN through every projected year's tax figures.
-const parsePct = (raw: string) => {
+/**
+ * A growth override holds the field's raw text separately from the number the
+ * projection actually uses.
+ *
+ * They have to be separate because a half-typed entry is not a rate. `Number('')`
+ * is 0 and finite, so clearing the field to type a new figure would otherwise read
+ * as "0% growth" and swing every projected year while the user's cursor is still
+ * in the box. `'-'` and `'3.'` are the same problem mid-keystroke.
+ *
+ * So `text` is whatever is in the field, and `value` only advances when the field
+ * parses to a real number — leaving the table steady until the entry means
+ * something.
+ */
+interface PctOverride {
+  text: string;
+  value: number;
+}
+
+/** Keep the typed text; advance the committed rate only on a parseable entry. */
+const nextOverride = (raw: string, previous: PctOverride | null, fallback: number): PctOverride => {
   const n = Number(raw);
-  return Number.isFinite(n) ? n : 0;
+  const parseable = raw.trim() !== '' && Number.isFinite(n);
+  return { text: raw, value: parseable ? n : previous?.value ?? fallback };
 };
 
 /**
@@ -43,20 +61,20 @@ export function Projection({ buckets, config }: Props) {
   const projection = config.referendum.projection;
   const districtGrowth = projection?.avGrowth.value;
 
-  const [firstYearPct, setFirstYearPct] = useState<number | null>(null);
-  const [laterYearsPct, setLaterYearsPct] = useState<number | null>(null);
-  const modified = firstYearPct !== null || laterYearsPct !== null;
+  const [firstYear, setFirstYear] = useState<PctOverride | null>(null);
+  const [laterYears, setLaterYears] = useState<PctOverride | null>(null);
+  const modified = firstYear !== null || laterYears !== null;
 
   const growth = useMemo(() => {
     if (!districtGrowth || !modified) return undefined;
     const years = Object.keys(districtGrowth).map(Number).sort((a, b) => a - b);
     const out: Record<number, number> = {};
     years.forEach((y, i) => {
-      const override = i === 0 ? firstYearPct : laterYearsPct;
-      out[y] = override === null ? districtGrowth[y] : override / 100;
+      const override = i === 0 ? firstYear : laterYears;
+      out[y] = override === null ? districtGrowth[y] : override.value / 100;
     });
     return out;
-  }, [districtGrowth, modified, firstYearPct, laterYearsPct]);
+  }, [districtGrowth, modified, firstYear, laterYears]);
 
   const rows = useMemo(
     () => projectReferendumLine(buckets, config, growth ? { avGrowth: growth } : {}),
@@ -102,8 +120,8 @@ export function Projection({ buckets, config }: Props) {
             type="number"
             step="0.1"
             className="mt-1 block w-24 rounded-md border border-border bg-surface p-2"
-            value={firstYearPct ?? firstYearDefault}
-            onChange={(e) => setFirstYearPct(parsePct(e.target.value))}
+            value={firstYear?.text ?? String(firstYearDefault)}
+            onChange={(e) => setFirstYear((prev) => nextOverride(e.target.value, prev, firstYearDefault))}
           />
         </label>
         <label className="block">
@@ -112,8 +130,8 @@ export function Projection({ buckets, config }: Props) {
             type="number"
             step="0.1"
             className="mt-1 block w-24 rounded-md border border-border bg-surface p-2"
-            value={laterYearsPct ?? laterYearsDefault}
-            onChange={(e) => setLaterYearsPct(parsePct(e.target.value))}
+            value={laterYears?.text ?? String(laterYearsDefault)}
+            onChange={(e) => setLaterYears((prev) => nextOverride(e.target.value, prev, laterYearsDefault))}
           />
         </label>
         {modified && (
@@ -121,8 +139,8 @@ export function Projection({ buckets, config }: Props) {
             type="button"
             className="text-accent underline"
             onClick={() => {
-              setFirstYearPct(null);
-              setLaterYearsPct(null);
+              setFirstYear(null);
+              setLaterYears(null);
             }}
           >
             Reset to the district&rsquo;s assumption
