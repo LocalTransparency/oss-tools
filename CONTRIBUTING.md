@@ -69,6 +69,23 @@ does not by itself mean the change is approved.
   source in the tool's sourced configuration (e.g.
   `lib/tax/assumptions.ts`). PRs that hardcode a figure or change one without a
   citation will not be merged.
+* **Editorial content.** Blog posts, opinion pieces, commentary, and any other
+  writing that argues rather than documents does not belong in this repository —
+  even when it is accurate, sourced, and written by a maintainer.
+
+  This is a licensing boundary, not a filing preference. Everything in this
+  repository is released under the [MIT License](LICENSE): anyone may copy,
+  modify, and redistribute it, including in altered form. That is exactly right
+  for code, tests, methodology, and sourced data, because reuse and independent
+  verification are the point. It is the wrong arrangement for editorial writing,
+  where an author reasonably retains control over how their argument is
+  reproduced and attributed.
+
+  Documentation that explains what the code does — methodology notes, data
+  provenance, source citations, research findings — is in scope and welcome.
+  Writing that takes a position belongs on the site, published through the CMS,
+  where normal authorial control applies.
+
 * Large refactors or dependency changes without a prior `approved` issue.
 
 ## Commit and PR requirements
